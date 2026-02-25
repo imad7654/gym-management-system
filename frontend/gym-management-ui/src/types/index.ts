@@ -1,3 +1,86 @@
+// Enums matching backend
+export enum Gender {
+  Male = 0,
+  Female = 1,
+  Other = 2,
+  PreferNotToSay = 3
+}
+
+export enum MembershipStatus {
+  Active = 0,
+  Expired = 1,
+  Pending = 2,
+  Cancelled = 3,
+  Suspended = 4
+}
+
+export enum PaymentStatus {
+  Paid = 0,
+  Pending = 1,
+  Overdue = 2,
+  PartiallyPaid = 3
+}
+
+export enum PaymentMethod {
+  Cash = 0,
+  CreditCard = 1,
+  DebitCard = 2,
+  BankTransfer = 3,
+  Other = 4
+}
+
+// Type-safe string literals
+export type GenderString = 'Male' | 'Female' | 'Other' | 'PreferNotToSay';
+export type MembershipStatusString = 'Active' | 'Expired' | 'Pending' | 'Cancelled' | 'Suspended';
+export type PaymentStatusString = 'Paid' | 'Pending' | 'Overdue' | 'PartiallyPaid';
+export type PaymentMethodString = 'Cash' | 'CreditCard' | 'DebitCard' | 'BankTransfer' | 'Other';
+
+// Mapping helpers
+export const GenderMap: Record<GenderString, Gender> = {
+  Male: Gender.Male,
+  Female: Gender.Female,
+  Other: Gender.Other,
+  PreferNotToSay: Gender.PreferNotToSay
+};
+
+export const GenderReverseMap: Record<Gender, GenderString> = {
+  [Gender.Male]: 'Male',
+  [Gender.Female]: 'Female',
+  [Gender.Other]: 'Other',
+  [Gender.PreferNotToSay]: 'PreferNotToSay'
+};
+
+export const MembershipStatusMap: Record<MembershipStatusString, MembershipStatus> = {
+  Active: MembershipStatus.Active,
+  Expired: MembershipStatus.Expired,
+  Pending: MembershipStatus.Pending,
+  Cancelled: MembershipStatus.Cancelled,
+  Suspended: MembershipStatus.Suspended
+};
+
+export const MembershipStatusReverseMap: Record<MembershipStatus, MembershipStatusString> = {
+  [MembershipStatus.Active]: 'Active',
+  [MembershipStatus.Expired]: 'Expired',
+  [MembershipStatus.Pending]: 'Pending',
+  [MembershipStatus.Cancelled]: 'Cancelled',
+  [MembershipStatus.Suspended]: 'Suspended'
+};
+
+export const PaymentStatusMap: Record<PaymentStatusString, PaymentStatus> = {
+  Paid: PaymentStatus.Paid,
+  Pending: PaymentStatus.Pending,
+  Overdue: PaymentStatus.Overdue,
+  PartiallyPaid: PaymentStatus.PartiallyPaid
+};
+
+export const PaymentMethodMap: Record<PaymentMethodString, PaymentMethod> = {
+  Cash: PaymentMethod.Cash,
+  CreditCard: PaymentMethod.CreditCard,
+  DebitCard: PaymentMethod.DebitCard,
+  BankTransfer: PaymentMethod.BankTransfer,
+  Other: PaymentMethod.Other
+};
+
 // API Response types
 export interface ApiResponse<T> {
   success: boolean;
@@ -47,7 +130,7 @@ export interface Client {
   email?: string;
   phoneNumber: string;
   dateOfBirth?: string;
-  gender?: string;
+  gender?: GenderString;
   address?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
@@ -57,8 +140,8 @@ export interface Client {
   currentPackageName?: string;
   membershipStartDate?: string;
   membershipEndDate?: string;
-  membershipStatus: string;
-  paymentStatus: string;
+  membershipStatus: MembershipStatusString;
+  paymentStatus: PaymentStatusString;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -71,8 +154,8 @@ export interface ClientListItem {
   email?: string;
   currentPackageName?: string;
   membershipEndDate?: string;
-  membershipStatus: string;
-  paymentStatus: string;
+  membershipStatus: MembershipStatusString;
+  paymentStatus: PaymentStatusString;
   isActive: boolean;
 }
 
@@ -82,7 +165,7 @@ export interface CreateClientRequest {
   email?: string;
   phoneNumber: string;
   dateOfBirth?: string;
-  gender?: 'Male' | 'Female' | 'Other';
+  gender?: GenderString;
   address?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
@@ -93,7 +176,7 @@ export interface CreateClientRequest {
 
 export interface UpdateClientRequest extends CreateClientRequest {
   membershipEndDate?: string;
-  paymentStatus?: 'Paid' | 'Pending' | 'Overdue';
+  paymentStatus?: PaymentStatusString;
 }
 
 export interface ClientQueryParams {
@@ -154,7 +237,7 @@ export interface CreatePaymentRequest {
   packageId: number;
   amount: number;
   paymentDate: string;
-  paymentMethod: 'Cash' | 'Card' | 'BankTransfer' | 'Other';
+  paymentMethod: PaymentMethodString;
   periodStartDate: string;
   periodEndDate: string;
   transactionReference?: string;

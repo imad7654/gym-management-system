@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -10,6 +10,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GymManagement.Infrastructure", "src\GymManagement.Infrastructure\GymManagement.Infrastructure.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GymManagement.Api", "src\GymManagement.Api\GymManagement.Api.csproj", "{D4E5F6A7-B8C9-0123-DEF0-234567890123}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1B83087A-B9C2-4F80-BC55-F9933D5F8A70}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GymManagement.UnitTests", "tests\GymManagement.UnitTests\GymManagement.UnitTests.csproj", "{5FF88CEB-6BD8-4836-8AF1-C29CA3501AAD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,5 +37,12 @@ Global
 		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4E5F6A7-B8C9-0123-DEF0-234567890123}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FF88CEB-6BD8-4836-8AF1-C29CA3501AAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FF88CEB-6BD8-4836-8AF1-C29CA3501AAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FF88CEB-6BD8-4836-8AF1-C29CA3501AAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FF88CEB-6BD8-4836-8AF1-C29CA3501AAD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5FF88CEB-6BD8-4836-8AF1-C29CA3501AAD} = {1B83087A-B9C2-4F80-BC55-F9933D5F8A70}
 	EndGlobalSection
 EndGlobal

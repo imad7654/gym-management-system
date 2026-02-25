@@ -115,7 +115,8 @@ public class PackageService : IPackageService
 
     public async Task<bool> DeletePackageAsync(int id, CancellationToken cancellationToken = default)
     {
-        var package = await _unitOfWork.Packages.GetByIdAsync(id, cancellationToken);
+        var package = await _unitOfWork.Packages.QueryIncludingDeleted()
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (package == null) return false;
 
         package.IsActive = false;

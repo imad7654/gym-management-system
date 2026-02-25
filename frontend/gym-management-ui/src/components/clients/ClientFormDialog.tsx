@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '@services/clientService';
-import { Client } from '@types/index';
+import { Client, GenderMap, GenderString } from '@types/index';
 
 interface ClientFormDialogProps {
   open: boolean;
@@ -100,7 +100,7 @@ export const ClientFormDialog = ({ open, onClose, client }: ClientFormDialogProp
       phoneNumber: formData.phoneNumber,
       email: formData.email || null,
       dateOfBirth: formData.dateOfBirth || null,
-      gender: formData.gender === 'Male' ? 0 : formData.gender === 'Female' ? 1 : formData.gender === 'Other' ? 2 : null,
+      gender: formData.gender ? GenderMap[formData.gender as GenderString] : null,
       address: formData.address || null,
       emergencyContact: formData.emergencyContact || null,
       emergencyPhone: formData.emergencyPhone || null,

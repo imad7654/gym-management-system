@@ -8,6 +8,7 @@ import { theme } from '@lib/theme';
 import { ProtectedRoute } from '@routes/ProtectedRoute';
 import { RoleBasedRoute } from '@routes/RoleBasedRoute';
 import { AdminLayout } from '@components/layout';
+import ErrorBoundary from '@components/ErrorBoundary';
 
 
 // Pages
@@ -19,10 +20,11 @@ import { PackagesPage } from '@pages/packages';
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <BrowserRouter>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <BrowserRouter>
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<HomePage />} />
@@ -49,10 +51,11 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+          </BrowserRouter>
+        </ThemeProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

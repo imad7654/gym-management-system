@@ -1,5 +1,7 @@
+using FluentValidation;
 using GymManagement.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace GymManagement.Application;
 
@@ -14,6 +16,9 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IGymInfoService, GymInfoService>();
+
+        // Register FluentValidation validators
+        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
         return services;
     }
