@@ -1,5 +1,5 @@
 import { Card, CardContent, Typography, Box } from '@mui/material';
-import { Package } from '@types/index';
+import { Package } from '@app-types/index';
 
 interface PackageCardProps {
   package: Package;

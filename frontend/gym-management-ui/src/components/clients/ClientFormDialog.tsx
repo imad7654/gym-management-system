@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '@services/clientService';
-import { Client, GenderMap, GenderString } from '@types/index';
+import { Client, GenderMap, GenderString } from '@app-types/index';
 
 interface ClientFormDialogProps {
   open: boolean;

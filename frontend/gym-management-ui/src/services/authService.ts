@@ -1,5 +1,5 @@
 import axiosInstance from '@lib/axios';
-import { ApiResponse, LoginRequest, LoginResponse, UserInfo } from '@types/index';
+import { ApiResponse, LoginRequest, LoginResponse, UserInfo } from '@app-types/index';
 
 export const authService = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {

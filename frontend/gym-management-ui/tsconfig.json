@@ -34,7 +34,7 @@
       "@routes/*": ["src/routes/*"],
       "@services/*": ["src/services/*"],
       "@store/*": ["src/store/*"],
-      "@types/*": ["src/types/*"],
+      "@app-types/*": ["src/types/*"],
       "@utils/*": ["src/utils/*"]
     }
   },

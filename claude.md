@@ -190,7 +190,7 @@ gym-app/
    @services   → src/services/
    @store      → src/store/
    @pages      → src/pages/
-   @types      → src/types/
+   @app-types  → src/types/ (named to avoid colliding with TypeScript's reserved @types/* package path)
    @lib        → src/lib/
    ```
 

@@ -7,7 +7,7 @@ import {
   CreateClientRequest,
   PaginatedResult,
   UpdateClientRequest,
-} from '@types/index';
+} from '@app-types/index';
 
 export const clientService = {
   getClients: async (

@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '@services/clientService';
-import { Client } from '@types/index';
+import { Client } from '@app-types/index';
 
 interface DeleteClientDialogProps {
   open: boolean;

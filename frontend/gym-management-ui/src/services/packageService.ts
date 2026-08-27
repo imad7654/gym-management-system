@@ -4,7 +4,7 @@ import {
   CreatePackageRequest,
   Package,
   UpdatePackageRequest,
-} from '@types/index';
+} from '@app-types/index';
 
 export const packageService = {
   getPackages: async (includeInactive: boolean = false): Promise<Package[]> => {

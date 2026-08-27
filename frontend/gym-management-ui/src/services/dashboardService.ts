@@ -6,7 +6,7 @@ import {
   RecentClient,
   RecentPayment,
   RevenueChartData,
-} from '@types/index';
+} from '@app-types/index';
 
 export const dashboardService = {
   getStats: async (): Promise<DashboardStats> => {

@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '@services/authService';
 import { useAuthStore } from '@store/authStore';
-import { LoginRequest } from '@types/index';
+import { LoginRequest } from '@app-types/index';
 
 const LoginPage = () => {
   const navigate = useNavigate();

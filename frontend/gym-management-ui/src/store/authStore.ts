@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { UserInfo } from '@types/index';
+import { UserInfo } from '@app-types/index';
 
 interface AuthState {
   accessToken: string | null;

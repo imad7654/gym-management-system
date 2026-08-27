@@ -1,5 +1,5 @@
 import axiosInstance from '@lib/axios';
-import { ApiResponse, GymInfo, UpdateGymInfoRequest } from '@types/index';
+import { ApiResponse, GymInfo, UpdateGymInfoRequest } from '@app-types/index';
 
 export const gymInfoService = {
   getGymInfo: async (): Promise<GymInfo> => {
