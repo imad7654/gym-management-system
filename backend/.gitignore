@@ -69,5 +69,3 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Migration snapshots (optional - remove this if you want to include them)
-**/Migrations/**/*.Designer.cs
