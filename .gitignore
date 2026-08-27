@@ -20,3 +20,6 @@ Desktop.ini
 # Logs
 *.log
 logs/
+
+# Local Docker Compose overrides (machine-specific port/volume tweaks)
+docker/docker-compose.override.yml
