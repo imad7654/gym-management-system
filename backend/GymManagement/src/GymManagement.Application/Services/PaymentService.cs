@@ -160,10 +160,12 @@ public class PaymentService : IPaymentService
             client.UpdateMembershipStatus();
         }
 
-        // Create payment history
+        // Create payment history. Set the Payment navigation property (not PaymentId
+        // directly) so EF Core's relationship fixup assigns the real foreign key once
+        // the new Payment row gets its identity value during this same SaveChanges call.
         var history = new PaymentHistory
         {
-            PaymentId = payment.Id,
+            Payment = payment,
             ClientId = request.ClientId,
             Action = PaymentHistoryAction.Created,
             NewAmount = payment.Amount,
@@ -174,10 +176,6 @@ public class PaymentService : IPaymentService
         };
 
         await _unitOfWork.PaymentHistories.AddAsync(history, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        // Update history with payment ID
-        history.PaymentId = payment.Id;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Reload with navigation properties

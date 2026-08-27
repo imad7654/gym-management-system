@@ -17,6 +17,7 @@ import { LoginPage } from '@pages/login';
 import { DashboardPage } from '@pages/dashboard';
 import { ClientsPage } from '@pages/clients';
 import { PackagesPage } from '@pages/packages';
+import { PaymentsPage } from '@pages/payments';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
 >
   <Route path="dashboard" element={<DashboardPage />} />
   <Route path="clients" element={<ClientsPage />} />
+  <Route path="payments" element={<PaymentsPage />} />
   <Route path="packages" element={<PackagesPage />} />
   <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
 </Route>

@@ -23,17 +23,17 @@ export enum PaymentStatus {
 
 export enum PaymentMethod {
   Cash = 0,
-  CreditCard = 1,
-  DebitCard = 2,
-  BankTransfer = 3,
-  Other = 4
+  Card = 1,
+  BankTransfer = 2,
+  Other = 3
 }
 
 // Type-safe string literals
 export type GenderString = 'Male' | 'Female' | 'Other' | 'PreferNotToSay';
 export type MembershipStatusString = 'Active' | 'Expired' | 'Pending' | 'Cancelled' | 'Suspended';
 export type PaymentStatusString = 'Paid' | 'Pending' | 'Overdue' | 'PartiallyPaid';
-export type PaymentMethodString = 'Cash' | 'CreditCard' | 'DebitCard' | 'BankTransfer' | 'Other';
+export type PaymentMethodString = 'Cash' | 'Card' | 'BankTransfer' | 'Other';
+export type TransactionStatusString = 'Completed' | 'Pending' | 'Failed' | 'Refunded';
 
 // Mapping helpers
 export const GenderMap: Record<GenderString, Gender> = {
@@ -75,8 +75,7 @@ export const PaymentStatusMap: Record<PaymentStatusString, PaymentStatus> = {
 
 export const PaymentMethodMap: Record<PaymentMethodString, PaymentMethod> = {
   Cash: PaymentMethod.Cash,
-  CreditCard: PaymentMethod.CreditCard,
-  DebitCard: PaymentMethod.DebitCard,
+  Card: PaymentMethod.Card,
   BankTransfer: PaymentMethod.BankTransfer,
   Other: PaymentMethod.Other
 };
@@ -232,6 +231,16 @@ export interface Payment {
   createdAt: string;
 }
 
+export interface PaymentListItem {
+  id: number;
+  clientName: string;
+  packageName: string;
+  amount: number;
+  paymentDate: string;
+  paymentMethod: string;
+  status: string;
+}
+
 export interface CreatePaymentRequest {
   clientId: number;
   packageId: number;
@@ -250,8 +259,8 @@ export interface PaymentQueryParams {
   clientId?: number;
   startDate?: string;
   endDate?: string;
-  status?: string;
-  paymentMethod?: string;
+  status?: TransactionStatusString;
+  paymentMethod?: PaymentMethodString;
   sortBy?: string;
   sortDescending?: boolean;
 }

@@ -18,6 +18,7 @@ import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
   LocalOffer as PackageIcon,
+  Payment as PaymentIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
@@ -43,6 +44,7 @@ export const AdminLayout = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
     { text: 'Clients', icon: <PeopleIcon />, path: '/admin/clients' },
+    { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
     { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
   ];
 
