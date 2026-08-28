@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IMemberImportService, MemberImportService>();
         services.AddScoped<IExchangeRateService, ExchangeRateService>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IAuditService, AuditService>();
 
         // Register FluentValidation validators
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());

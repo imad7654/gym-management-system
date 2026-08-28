@@ -110,7 +110,7 @@ public class ClientsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteClient(int id)
     {
-        var result = await _clientService.DeleteClientAsync(id);
+        var result = await _clientService.DeleteClientAsync(id, _currentUserService.UserId);
 
         if (!result)
         {
@@ -128,7 +128,7 @@ public class ClientsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RestoreClient(int id)
     {
-        var result = await _clientService.RestoreClientAsync(id);
+        var result = await _clientService.RestoreClientAsync(id, _currentUserService.UserId);
 
         if (!result)
         {

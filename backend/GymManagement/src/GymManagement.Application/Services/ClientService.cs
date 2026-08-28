@@ -14,8 +14,8 @@ public interface IClientService
     Task<ClientDto?> GetClientByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<ClientDto> CreateClientAsync(CreateClientRequest request, int? userId = null, CancellationToken cancellationToken = default);
     Task<ClientDto?> UpdateClientAsync(int id, UpdateClientRequest request, int? userId = null, CancellationToken cancellationToken = default);
-    Task<bool> DeleteClientAsync(int id, CancellationToken cancellationToken = default);
-    Task<bool> RestoreClientAsync(int id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default);
+    Task<bool> RestoreClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default);
     Task<List<ClientListDto>> GetExpiringClientsAsync(int days = 7, CancellationToken cancellationToken = default);
 }
 
@@ -23,11 +23,13 @@ public class ClientService : IClientService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMembershipClock _clock;
+    private readonly IAuditService _audit;
 
-    public ClientService(IUnitOfWork unitOfWork, IMembershipClock clock)
+    public ClientService(IUnitOfWork unitOfWork, IMembershipClock clock, IAuditService audit)
     {
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _audit = audit;
     }
 
     public async Task<PaginatedResult<ClientListDto>> GetClientsAsync(ClientQueryParameters parameters, CancellationToken cancellationToken = default)
@@ -146,6 +148,21 @@ public class ClientService : IClientService
         await _unitOfWork.Clients.AddAsync(client, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Written after the save rather than with it, because the row has no id until then
+        // and a trail entry that cannot say which member it refers to is not worth keeping.
+        // The trailing save is the one place the trail is not in the same transaction as its
+        // change; a create that failed to be logged still leaves a visible new member, which
+        // is the mild version of this going wrong.
+        await _audit.RecordAsync(
+            "Client", client.Id, AuditAction.Created,
+            $"Added member {client.FullName}",
+            client.MembershipEndDate.HasValue
+                ? $"Membership runs to {client.MembershipEndDate:yyyy-MM-dd}."
+                : "No membership dates set yet.",
+            userId, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         // Reload with package
         client = await _unitOfWork.Clients.Query()
             .Include(c => c.CurrentPackage)
@@ -160,6 +177,14 @@ public class ClientService : IClientService
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
         if (client == null) return null;
+
+        // Captured before anything is overwritten. The membership fields are the ones worth
+        // spelling out: a changed end date is a member let in or turned away, and "who moved
+        // this date" is the question the trail exists to answer.
+        var beforeEnd = client.MembershipEndDate;
+        var beforeStart = client.MembershipStartDate;
+        var beforePackageId = client.CurrentPackageId;
+        var beforePaymentStatus = client.PaymentStatus;
 
         client.FirstName = request.FirstName;
         client.LastName = request.LastName;
@@ -183,6 +208,24 @@ public class ClientService : IClientService
 
         client.UpdateMembershipStatus(_clock.Today);
 
+        var changes = new List<string>();
+        if (beforeStart != client.MembershipStartDate)
+            changes.Add($"Start date {ShowDate(beforeStart)} to {ShowDate(client.MembershipStartDate)}");
+        if (beforeEnd != client.MembershipEndDate)
+            changes.Add($"End date {ShowDate(beforeEnd)} to {ShowDate(client.MembershipEndDate)}");
+        if (beforePackageId != client.CurrentPackageId)
+            changes.Add($"Package #{beforePackageId?.ToString() ?? "none"} to #{client.CurrentPackageId?.ToString() ?? "none"}");
+        if (beforePaymentStatus != client.PaymentStatus)
+            changes.Add($"Payment status {beforePaymentStatus} to {client.PaymentStatus}");
+
+        await _audit.RecordAsync(
+            "Client", client.Id, AuditAction.Updated,
+            changes.Count > 0
+                ? $"Changed {client.FullName}'s membership"
+                : $"Edited {client.FullName}'s details",
+            changes.Count > 0 ? string.Join(". ", changes) + "." : null,
+            userId, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Reload with package
@@ -193,17 +236,27 @@ public class ClientService : IClientService
         return MapToDto(client!);
     }
 
-    public async Task<bool> DeleteClientAsync(int id, CancellationToken cancellationToken = default)
+    private static string ShowDate(DateTime? date) =>
+        date?.ToString("yyyy-MM-dd") ?? "none";
+
+    public async Task<bool> DeleteClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default)
     {
         var client = await _unitOfWork.Clients.GetByIdAsync(id, cancellationToken);
         if (client == null) return false;
 
         client.SoftDelete();
+
+        await _audit.RecordAsync(
+            "Client", client.Id, AuditAction.Deleted,
+            $"Removed member {client.FullName}",
+            "Soft delete - the record and their payment history are kept and can be restored.",
+            userId, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    public async Task<bool> RestoreClientAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<bool> RestoreClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default)
     {
         var client = await _unitOfWork.Clients.QueryIncludingDeleted()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
@@ -211,6 +264,13 @@ public class ClientService : IClientService
         if (client == null) return false;
 
         client.Restore(_clock.Today);
+
+        await _audit.RecordAsync(
+            "Client", client.Id, AuditAction.Restored,
+            $"Restored member {client.FullName}",
+            $"Membership status recalculated to {client.MembershipStatus}.",
+            userId, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }

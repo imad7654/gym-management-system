@@ -21,7 +21,7 @@ import { PaymentsPage } from '@pages/payments';
 import { SettingsPage } from '@pages/settings';
 import { ChangePasswordPage } from '@pages/account';
 import { ImportMembersPage } from '@pages/import';
-import { DailyTakingsPage, WhoOwesMoneyPage } from '@pages/reports';
+import { AuditTrailPage, DailyTakingsPage, WhoOwesMoneyPage } from '@pages/reports';
 
 function App() {
   return (
@@ -52,6 +52,7 @@ function App() {
   <Route path="payments" element={<PaymentsPage />} />
   <Route path="reports/who-owes" element={<WhoOwesMoneyPage />} />
   <Route path="reports/daily-takings" element={<DailyTakingsPage />} />
+  <Route path="reports/history" element={<AuditTrailPage />} />
   <Route path="packages" element={<PackagesPage />} />
   <Route path="settings" element={<SettingsPage />} />
   <Route path="change-password" element={<ChangePasswordPage />} />

@@ -1,5 +1,12 @@
 import axiosInstance from '@lib/axios';
-import { ApiResponse, DailyTakings, WhoOwesMoney } from '@app-types/index';
+import {
+  ApiResponse,
+  AuditEntry,
+  AuditQueryParams,
+  DailyTakings,
+  PaginatedResult,
+  WhoOwesMoney,
+} from '@app-types/index';
 
 /** The owner's money reports. */
 export const reportService = {
@@ -19,6 +26,16 @@ export const reportService = {
       '/reports/daily-takings',
       { params: date ? { date } : undefined }
     );
+    return response.data.data!;
+  },
+
+  /** Who did what, newest first. */
+  getAuditTrail: async (
+    params: AuditQueryParams
+  ): Promise<PaginatedResult<AuditEntry>> => {
+    const response = await axiosInstance.get<
+      ApiResponse<PaginatedResult<AuditEntry>>
+    >('/reports/audit', { params });
     return response.data.data!;
   },
 };

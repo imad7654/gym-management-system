@@ -48,7 +48,7 @@ public class RevenueAfterReversalTests : IDisposable
 
         var clock = new FixedClock(Today);
         _unitOfWork = new UnitOfWork(_context);
-        _payments = new PaymentService(_unitOfWork, clock);
+        _payments = new PaymentService(_unitOfWork, clock, new AuditService(_unitOfWork, clock));
         _dashboard = new DashboardService(_unitOfWork, clock);
     }
 

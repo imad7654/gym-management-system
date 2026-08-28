@@ -43,7 +43,7 @@ public class PartialPaymentTopUpTests : IDisposable
         _context.SaveChanges();
 
         _unitOfWork = new UnitOfWork(_context);
-        _payments = new PaymentService(_unitOfWork, new FixedClock(Today));
+        _payments = new PaymentService(_unitOfWork, new FixedClock(Today), new AuditService(_unitOfWork, new FixedClock(Today)));
     }
 
     public void Dispose() => _unitOfWork.Dispose();

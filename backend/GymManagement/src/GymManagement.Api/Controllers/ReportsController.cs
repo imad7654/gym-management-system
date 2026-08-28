@@ -1,6 +1,7 @@
 using GymManagement.Application.DTOs.Common;
 using GymManagement.Application.DTOs.Reports;
 using GymManagement.Application.Services;
+using GymManagement.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,10 +16,12 @@ namespace GymManagement.Api.Controllers;
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _reportService;
+    private readonly IAuditService _auditService;
 
-    public ReportsController(IReportService reportService)
+    public ReportsController(IReportService reportService, IAuditService auditService)
     {
         _reportService = reportService;
+        _auditService = auditService;
     }
 
     /// <summary>
@@ -47,5 +50,17 @@ public class ReportsController : ControllerBase
     {
         var report = await _reportService.GetDailyTakingsAsync(date, cancellationToken);
         return Ok(ApiResponse<DailyTakingsDto>.SuccessResponse(report));
+    }
+
+    /// <summary>
+    /// The audit trail: who did what, newest first.
+    /// </summary>
+    [HttpGet("audit")]
+    [ProducesResponseType(typeof(ApiResponse<PaginatedResult<AuditEntryDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAuditTrail(
+        [FromQuery] AuditQueryParameters parameters, CancellationToken cancellationToken)
+    {
+        var entries = await _auditService.GetEntriesAsync(parameters, cancellationToken);
+        return Ok(ApiResponse<PaginatedResult<AuditEntryDto>>.SuccessResponse(entries));
     }
 }

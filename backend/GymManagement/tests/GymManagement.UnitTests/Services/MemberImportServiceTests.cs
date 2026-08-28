@@ -45,7 +45,7 @@ public class MemberImportServiceTests : IDisposable
         _context.SaveChanges();
 
         _unitOfWork = new UnitOfWork(_context);
-        _service = new MemberImportService(_unitOfWork, new MemberImportFileReader(), new FixedClock(Today));
+        _service = new MemberImportService(_unitOfWork, new MemberImportFileReader(), new FixedClock(Today), new AuditService(_unitOfWork, new FixedClock(Today)));
     }
 
     public void Dispose() => _unitOfWork.Dispose();

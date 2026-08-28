@@ -31,11 +31,13 @@ public class PaymentService : IPaymentService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMembershipClock _clock;
+    private readonly IAuditService _audit;
 
-    public PaymentService(IUnitOfWork unitOfWork, IMembershipClock clock)
+    public PaymentService(IUnitOfWork unitOfWork, IMembershipClock clock, IAuditService audit)
     {
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _audit = audit;
     }
 
     public async Task<PaginatedResult<PaymentListDto>> GetPaymentsAsync(PaymentQueryParameters parameters, CancellationToken cancellationToken = default)
@@ -248,6 +250,13 @@ public class PaymentService : IPaymentService
             ChangedAt = _clock.UtcNow
         }, cancellationToken);
 
+        // The trail entry rides on the same SaveChanges as the payment, so money can never
+        // be taken without a record of who took it.
+        await _audit.RecordAsync(
+            "Payment", null, AuditAction.Created,
+            $"Took {amountUsd:0.00} USD from {client.FullName} by {request.PaymentMethod}",
+            description, userId, cancellationToken);
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await ReloadDtoAsync(payment.Id, cancellationToken);
@@ -384,6 +393,16 @@ public class PaymentService : IPaymentService
             ChangedBy = userId,
             ChangedAt = _clock.UtcNow
         }, cancellationToken);
+
+        await _audit.RecordAsync(
+            "Payment", original.Id, AuditAction.Reversed,
+            $"Gave back {original.Amount:0.00} USD to {client.FullName}",
+            $"Reversal of payment #{original.Id}."
+                + (extendedMembership
+                    ? $" {original.Package.DurationDays} days removed from the membership."
+                    : " The payment had not extended the membership.")
+                + (reason == null ? "" : $" Reason: {reason}"),
+            userId, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

@@ -12,6 +12,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<PaymentHistory> PaymentHistories { get; }
     IRepository<GymInfo> GymInfos { get; }
     IRepository<ExchangeRate> ExchangeRates { get; }
+    IRepository<AuditLog> AuditLogs { get; }
     IRepository<RefreshToken> RefreshTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

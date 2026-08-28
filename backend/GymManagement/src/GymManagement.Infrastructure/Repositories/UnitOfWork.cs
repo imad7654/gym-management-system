@@ -18,6 +18,7 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<PaymentHistory>? _paymentHistories;
     private IRepository<GymInfo>? _gymInfos;
     private IRepository<ExchangeRate>? _exchangeRates;
+    private IRepository<AuditLog>? _auditLogs;
     private IRepository<RefreshToken>? _refreshTokens;
 
     public UnitOfWork(ApplicationDbContext context)
@@ -33,6 +34,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<PaymentHistory> PaymentHistories => _paymentHistories ??= new Repository<PaymentHistory>(_context);
     public IRepository<GymInfo> GymInfos => _gymInfos ??= new Repository<GymInfo>(_context);
     public IRepository<ExchangeRate> ExchangeRates => _exchangeRates ??= new Repository<ExchangeRate>(_context);
+    public IRepository<AuditLog> AuditLogs => _auditLogs ??= new Repository<AuditLog>(_context);
     public IRepository<RefreshToken> RefreshTokens => _refreshTokens ??= new Repository<RefreshToken>(_context);
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

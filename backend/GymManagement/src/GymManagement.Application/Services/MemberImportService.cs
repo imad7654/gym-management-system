@@ -76,15 +76,18 @@ public class MemberImportService : IMemberImportService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMemberImportFileReader _fileReader;
     private readonly IMembershipClock _clock;
+    private readonly IAuditService _audit;
 
     public MemberImportService(
         IUnitOfWork unitOfWork,
         IMemberImportFileReader fileReader,
-        IMembershipClock clock)
+        IMembershipClock clock,
+        IAuditService audit)
     {
         _unitOfWork = unitOfWork;
         _fileReader = fileReader;
         _clock = clock;
+        _audit = audit;
     }
 
     public async Task<MemberImportPreviewDto> PreviewAsync(
@@ -153,6 +156,15 @@ public class MemberImportService : IMemberImportService
             candidate.Client!.CreatedBy = userId;
             await _unitOfWork.Clients.AddAsync(candidate.Client, cancellationToken);
         }
+
+        // One entry for the whole import, not one per member. A hundred near-identical
+        // "added member" lines would bury the trail on the day it matters most.
+        await _audit.RecordAsync(
+            "Client", null, AuditAction.Imported,
+            $"Imported {ready.Count} members from {fileName}",
+            $"{ready.Count} added, {skipped.Count} skipped. "
+                + "Imported members keep their existing end dates and have no payment history.",
+            userId, cancellationToken);
 
         // One SaveChangesAsync is one database transaction, so the import is all or nothing
         // without an explicit BeginTransaction - which the retrying execution strategy this

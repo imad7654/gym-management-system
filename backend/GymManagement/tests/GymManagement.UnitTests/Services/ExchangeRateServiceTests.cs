@@ -34,7 +34,7 @@ public class ExchangeRateServiceTests : IDisposable
 
         _context = new ApplicationDbContext(options);
         _unitOfWork = new UnitOfWork(_context);
-        _service = new ExchangeRateService(_unitOfWork, new FixedClock(Today));
+        _service = new ExchangeRateService(_unitOfWork, new FixedClock(Today), new AuditService(_unitOfWork, new FixedClock(Today)));
     }
 
     public void Dispose() => _unitOfWork.Dispose();

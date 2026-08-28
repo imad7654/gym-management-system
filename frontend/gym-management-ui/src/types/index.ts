@@ -476,3 +476,35 @@ export interface DailyTakings {
   reversalsUsd: number;
   payments: TakingsPayment[];
 }
+
+// Audit trail (blueprint 9.3)
+export type AuditActionString =
+  | 'Created'
+  | 'Updated'
+  | 'Deleted'
+  | 'Restored'
+  | 'Reversed'
+  | 'Imported';
+
+export interface AuditEntry {
+  id: number;
+  entityType: string;
+  entityId?: number;
+  action: AuditActionString;
+  summary: string;
+  details?: string;
+  /** Null when the system did it rather than a person. */
+  actorName?: string;
+  occurredAt: string;
+}
+
+export interface AuditQueryParams {
+  page?: number;
+  pageSize?: number;
+  entityType?: string;
+  entityId?: number;
+  action?: AuditActionString;
+  from?: string;
+  to?: string;
+  search?: string;
+}

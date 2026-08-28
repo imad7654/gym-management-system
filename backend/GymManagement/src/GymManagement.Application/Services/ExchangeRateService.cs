@@ -1,6 +1,7 @@
 using GymManagement.Application.DTOs.ExchangeRate;
 using GymManagement.Application.Exceptions;
 using GymManagement.Application.Interfaces;
+using GymManagement.Domain.Enums;
 using GymManagement.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,11 +36,13 @@ public class ExchangeRateService : IExchangeRateService
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMembershipClock _clock;
+    private readonly IAuditService _audit;
 
-    public ExchangeRateService(IUnitOfWork unitOfWork, IMembershipClock clock)
+    public ExchangeRateService(IUnitOfWork unitOfWork, IMembershipClock clock, IAuditService audit)
     {
         _unitOfWork = unitOfWork;
         _clock = clock;
+        _audit = audit;
     }
 
     public async Task<ExchangeRateDto?> GetCurrentAsync(CancellationToken cancellationToken = default)
@@ -81,6 +84,10 @@ public class ExchangeRateService : IExchangeRateService
         var existing = await _unitOfWork.ExchangeRates.Query()
             .FirstOrDefaultAsync(r => r.EffectiveDate == todayAsDate, cancellationToken);
 
+        // Read before the overwrite below, so the trail can say what the rate was changed
+        // from rather than repeating what it was changed to.
+        var previousRate = existing?.Rate;
+
         if (existing != null)
         {
             // Correcting a typo made this morning, not adding a second rate for the same
@@ -98,6 +105,15 @@ public class ExchangeRateService : IExchangeRateService
                 SetBy = userId
             }, cancellationToken);
         }
+
+        // Audited because the rate decides what every LBP payment that day is worth in the
+        // books. A rate typed wrong and corrected an hour later leaves payments behind it.
+        await _audit.RecordAsync(
+            "ExchangeRate", null,
+            previousRate.HasValue ? AuditAction.Updated : AuditAction.Created,
+            $"Set today's rate to {rate:#,##0} LBP per USD",
+            previousRate.HasValue ? $"Corrected from {previousRate.Value:#,##0}." : null,
+            userId, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

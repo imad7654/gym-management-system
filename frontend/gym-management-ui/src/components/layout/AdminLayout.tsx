@@ -29,6 +29,7 @@ import {
   UploadFile as UploadFileIcon,
   MoneyOff as MoneyOffIcon,
   ReceiptLong as ReceiptIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
@@ -65,6 +66,7 @@ export const AdminLayout = () => {
     { text: 'Daily Takings', icon: <ReceiptIcon />, path: '/admin/reports/daily-takings' },
     { text: 'Who Owes Money', icon: <MoneyOffIcon />, path: '/admin/reports/who-owes' },
     { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
+    { text: 'History', icon: <HistoryIcon />, path: '/admin/reports/history' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
   ];
 

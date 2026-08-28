@@ -20,6 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<PaymentHistory> PaymentHistories => Set<PaymentHistory>();
     public DbSet<GymInfo> GymInfos => Set<GymInfo>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
