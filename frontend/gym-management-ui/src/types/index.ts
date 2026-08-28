@@ -378,3 +378,43 @@ export interface GymInfo {
 }
 
 export type UpdateGymInfoRequest = Omit<GymInfo, 'id'>;
+
+// Member import types (blueprint 6.3)
+export type MemberImportRowStatus = 'Ready' | 'Duplicate' | 'Error';
+
+export interface MemberImportRow {
+  rowNumber: number;
+  rawName?: string;
+  rawPhone?: string;
+  rawPackage?: string;
+  rawEndDate?: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  email?: string;
+  packageId?: number;
+  packageName?: string;
+  membershipStartDate?: string;
+  membershipEndDate?: string;
+  startDateWasDerived: boolean;
+  membershipStatus?: string;
+  status: MemberImportRowStatus;
+  problems: string[];
+}
+
+export interface MemberImportPreview {
+  fileName: string;
+  fileHash: string;
+  totalRows: number;
+  readyCount: number;
+  duplicateCount: number;
+  errorCount: number;
+  availablePackages: string[];
+  rows: MemberImportRow[];
+}
+
+export interface MemberImportResult {
+  importedCount: number;
+  skippedCount: number;
+  skippedRows: MemberImportRow[];
+}

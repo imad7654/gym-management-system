@@ -26,6 +26,7 @@ import {
   Logout as LogoutIcon,
   ArrowDropDown as ArrowDropDownIcon,
   Lock as LockIcon,
+  UploadFile as UploadFileIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
@@ -57,6 +58,7 @@ export const AdminLayout = () => {
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
     { text: 'Clients', icon: <PeopleIcon />, path: '/admin/clients' },
+    { text: 'Import Members', icon: <UploadFileIcon />, path: '/admin/clients/import' },
     { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
     { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },

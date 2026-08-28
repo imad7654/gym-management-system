@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IGymInfoService, GymInfoService>();
+        services.AddScoped<IMemberImportService, MemberImportService>();
 
         // Register FluentValidation validators
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());

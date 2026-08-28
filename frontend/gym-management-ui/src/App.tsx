@@ -20,6 +20,7 @@ import { PackagesPage } from '@pages/packages';
 import { PaymentsPage } from '@pages/payments';
 import { SettingsPage } from '@pages/settings';
 import { ChangePasswordPage } from '@pages/account';
+import { ImportMembersPage } from '@pages/import';
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
 >
   <Route path="dashboard" element={<DashboardPage />} />
   <Route path="clients" element={<ClientsPage />} />
+  <Route path="clients/import" element={<ImportMembersPage />} />
   <Route path="payments" element={<PaymentsPage />} />
   <Route path="packages" element={<PackagesPage />} />
   <Route path="settings" element={<SettingsPage />} />

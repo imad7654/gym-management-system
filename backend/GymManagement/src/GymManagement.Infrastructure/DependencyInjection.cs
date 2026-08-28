@@ -43,6 +43,9 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IMembershipClock, MembershipClock>();
 
+        // Stateless - it only turns uploaded bytes into rows of text.
+        services.AddSingleton<IMemberImportFileReader, MemberImportFileReader>();
+
         return services;
     }
 }
