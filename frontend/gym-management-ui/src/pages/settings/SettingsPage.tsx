@@ -15,6 +15,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { gymInfoService } from '@services/gymInfoService';
 import { UpdateGymInfoRequest } from '@app-types/index';
+import { ExchangeRateCard } from '@components/settings';
 
 const EMPTY_FORM: UpdateGymInfoRequest = {
   gymName: '',
@@ -157,8 +158,16 @@ const SettingsPage = () => {
         Gym settings
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Your gym&apos;s name, contact details and the words on your public homepage.
+        The rate you are trading at today, plus your gym&apos;s name, contact details and
+        the words on your public homepage.
       </Typography>
+
+      {/*
+        Deliberately outside the form below. It saves to its own endpoint, and a submit
+        button inside that form would post the gym's website details every time the owner
+        set the morning rate.
+      */}
+      <ExchangeRateCard />
 
       <form onSubmit={handleSubmit}>
         {updateMutation.isError && (

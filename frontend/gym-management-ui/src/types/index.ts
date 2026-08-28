@@ -418,3 +418,12 @@ export interface MemberImportResult {
   skippedCount: number;
   skippedRows: MemberImportRow[];
 }
+
+// Today's LBP-per-USD rate, set by the owner each morning
+export interface ExchangeRate {
+  rate: number;
+  effectiveDate: string;
+  /** 0 means set today. Computed server-side, in the gym's timezone, not the browser's. */
+  daysOld: number;
+  isStale: boolean;
+}

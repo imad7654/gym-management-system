@@ -22,6 +22,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '@services/clientService';
 import { packageService } from '@services/packageService';
 import { paymentService } from '@services/paymentService';
+import { exchangeRateService } from '@services/exchangeRateService';
 import {
   ClientListItem,
   CurrencyString,
@@ -71,6 +72,12 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
     enabled: open,
   });
 
+  const { data: todaysRate } = useQuery({
+    queryKey: ['exchange-rate', 'current'],
+    queryFn: exchangeRateService.getCurrent,
+    enabled: open,
+  });
+
   const selectedPackage = packages?.find((p) => p.id === formData.packageId);
   const isLbp = formData.currency === 'Lbp';
 
@@ -91,6 +98,18 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
   useEffect(() => {
     if (!open) resetForm();
   }, [open]);
+
+  // Fill in the rate the owner set this morning, so reception is not retyping it from
+  // memory on every LBP payment. Only when the box is still empty: a rate typed for this
+  // one payment must survive, since the payment keeps whatever rate it was taken at.
+  useEffect(() => {
+    if (!open || !isLbp || !todaysRate) return;
+    setFormData((prev) =>
+      prev.exchangeRate === ''
+        ? { ...prev, exchangeRate: String(todaysRate.rate) }
+        : prev
+    );
+  }, [open, isLbp, todaysRate]);
 
   // Prefill what they owe, in whichever currency is selected. Reception can overwrite it -
   // this is a convenience, and the server checks the real figure either way.
@@ -126,6 +145,18 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
 
   const received = parseFloat(formData.amountReceived);
   const rate = parseFloat(formData.exchangeRate);
+
+  /**
+   * Says where the rate came from. Reception needs to know whether the number in the box
+   * is this morning's or a leftover, because it is stored with the payment for good.
+   */
+  const rateHelperText = !todaysRate
+    ? 'No rate set in Settings — type today\'s rate'
+    : todaysRate.isStale
+      ? `Last set ${
+          todaysRate.daysOld === 1 ? 'yesterday' : `${todaysRate.daysOld} days ago`
+        } — check it before taking LBP`
+      : "Today's rate, from Settings. Change it for this one payment if needed";
 
   /** Mirrors the server's conversion so the desk can see the result before submitting. */
   const amountUsd = isLbp
@@ -257,7 +288,11 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
                     endAdornment: <InputAdornment position="end">LBP / $</InputAdornment>,
                   }}
                   inputProps={{ min: '0.01', step: '0.01' }}
-                  helperText="Stored with the payment and never recalculated"
+                  helperText={rateHelperText}
+                  // A stale rate is still offered, but the desk is told, because the
+                  // payment keeps whatever rate it was taken at.
+                  color={todaysRate?.isStale ? 'warning' : undefined}
+                  focused={todaysRate?.isStale ? true : undefined}
                 />
               </Grid>
             )}
