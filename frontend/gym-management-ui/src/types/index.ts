@@ -17,7 +17,7 @@ export type MembershipStatusString =
   | 'Expired'
   | 'Suspended';
 export type PaymentStatusString = 'Paid' | 'Pending' | 'Overdue' | 'Partial';
-export type PaymentMethodString = 'Cash' | 'Card' | 'BankTransfer' | 'Other' | 'Online';
+export type PaymentMethodString = 'Cash' | 'Whish' | 'Other';
 export type TransactionStatusString = 'Completed' | 'Pending' | 'Failed' | 'Refunded';
 export type CurrencyString = 'Usd' | 'Lbp';
 
@@ -41,10 +41,8 @@ export enum PaymentStatus {
 
 export enum PaymentMethod {
   Cash = 0,
-  Card = 1,
-  BankTransfer = 2,
-  Other = 3,
-  Online = 4
+  Whish = 1,
+  Other = 2
 }
 
 // Mapping helpers
@@ -87,10 +85,8 @@ export const PaymentStatusMap: Record<PaymentStatusString, PaymentStatus> = {
 
 export const PaymentMethodMap: Record<PaymentMethodString, PaymentMethod> = {
   Cash: PaymentMethod.Cash,
-  Card: PaymentMethod.Card,
-  BankTransfer: PaymentMethod.BankTransfer,
-  Other: PaymentMethod.Other,
-  Online: PaymentMethod.Online
+  Whish: PaymentMethod.Whish,
+  Other: PaymentMethod.Other
 };
 
 // API Response types

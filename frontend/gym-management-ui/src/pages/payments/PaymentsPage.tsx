@@ -107,8 +107,7 @@ const PaymentsPage = () => {
             >
               <MenuItem value="">All Methods</MenuItem>
               <MenuItem value="Cash">Cash</MenuItem>
-              <MenuItem value="Card">Card</MenuItem>
-              <MenuItem value="BankTransfer">Bank Transfer</MenuItem>
+              <MenuItem value="Whish">Whish Money</MenuItem>
               <MenuItem value="Other">Other</MenuItem>
             </TextField>
           </Grid>
@@ -172,7 +171,7 @@ const PaymentsPage = () => {
                   <TableCell>{payment.packageName}</TableCell>
                   <TableCell>${payment.amount.toFixed(2)}</TableCell>
                   <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{payment.paymentMethod === 'BankTransfer' ? 'Bank Transfer' : payment.paymentMethod}</TableCell>
+                  <TableCell>{payment.paymentMethod === 'Whish' ? 'Whish Money' : payment.paymentMethod}</TableCell>
                   <TableCell>
                     <Chip
                       label={payment.status}

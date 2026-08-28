@@ -363,7 +363,7 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
               >
                 {Object.keys(PaymentMethodMap).map((method) => (
                   <MenuItem key={method} value={method}>
-                    {method === 'BankTransfer' ? 'Bank Transfer' : method}
+                    {method === 'Whish' ? 'Whish Money' : method}
                   </MenuItem>
                 ))}
               </TextField>
