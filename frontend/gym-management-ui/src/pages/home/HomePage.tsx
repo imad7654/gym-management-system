@@ -1,11 +1,61 @@
-import { Container, Typography, Box, Button, Grid } from '@mui/material';
+import { Container, Typography, Box, Button, Grid, Link, Stack } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { packageService } from '@services/packageService';
+import { gymInfoService } from '@services/gymInfoService';
 import { BearLifting } from '@assets/illustrations/BearLifting';
 import { MOTIVATIONAL_QUOTES } from '@constants/motivationalQuotes';
 import { MotivationalQuoteCard } from '@components/home/MotivationalQuoteCard';
 import { PackageCard } from '@components/home/PackageCard';
+
+/**
+ * What the homepage says when the owner has not filled in Gym settings yet. Every one of
+ * these is overridden by the saved GymInfo row, so the page never looks unfinished and
+ * the fallbacks stay out of the way once real copy exists.
+ */
+const FALLBACK = {
+  gymName: '🐻 THE FIT BEAR GYM',
+  heroTitle: 'Where Strength Meets Nature',
+  heroSubtitle:
+    'Train like a bear, dominate like a champion. Join our pack and unleash your primal strength!',
+  aboutTitle: '📍 Find Us & Join The Pack',
+  aboutContent: 'The Fit Bear Gym - Where bears train champions',
+};
+
+/**
+ * Opening hours are free text, but older seeded rows hold a JSON object of day -> hours.
+ * Render those as readable lines rather than letting a raw blob onto the public page.
+ */
+const formatOperatingHours = (hours: string): string => {
+  const trimmed = hours.trim();
+  if (!trimmed.startsWith('{')) return trimmed;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return trimmed;
+
+    const DAY_ORDER = [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ];
+
+    return Object.entries(parsed as Record<string, unknown>)
+      .filter(([, value]) => typeof value === 'string')
+      .sort(
+        ([a], [b]) =>
+          DAY_ORDER.indexOf(a.toLowerCase()) - DAY_ORDER.indexOf(b.toLowerCase())
+      )
+      .map(([day, value]) => `${day[0].toUpperCase()}${day.slice(1)}: ${value}`)
+      .join('\n');
+  } catch {
+    return trimmed;
+  }
+};
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -14,6 +64,27 @@ const HomePage = () => {
     queryKey: ['packages', 'active'],
     queryFn: () => packageService.getActivePackages(),
   });
+
+  // Public endpoint, so this works for visitors who are not logged in. If it fails the
+  // page still renders on the fallbacks above.
+  const { data: gymInfo } = useQuery({
+    queryKey: ['gym-info'],
+    queryFn: gymInfoService.getGymInfo,
+    retry: false,
+  });
+
+  const gymName = gymInfo?.gymName || FALLBACK.gymName;
+  const heroTitle = gymInfo?.heroTitle || FALLBACK.heroTitle;
+  const heroSubtitle =
+    gymInfo?.heroSubtitle || gymInfo?.description || FALLBACK.heroSubtitle;
+  const aboutTitle = gymInfo?.aboutTitle || FALLBACK.aboutTitle;
+  const aboutContent = gymInfo?.aboutContent || FALLBACK.aboutContent;
+
+  const socials = [
+    { label: 'Facebook', url: gymInfo?.facebookUrl },
+    { label: 'Instagram', url: gymInfo?.instagramUrl },
+    { label: 'X', url: gymInfo?.twitterUrl },
+  ].filter((s): s is { label: string; url: string } => Boolean(s.url));
 
   return (
     <Box>
@@ -56,7 +127,7 @@ const HomePage = () => {
               letterSpacing: '0.02em'
             }}
           >
-            🐻 THE FIT BEAR GYM
+            {gymName}
           </Typography>
           <Typography
             variant="h4"
@@ -68,10 +139,10 @@ const HomePage = () => {
               textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
             }}
           >
-            "Where Strength Meets Nature"
+            {heroTitle}
           </Typography>
           <Typography variant="h6" sx={{ mb: 6, maxWidth: 700, mx: 'auto', opacity: 0.95 }}>
-            Train like a bear, dominate like a champion. Join our pack and unleash your primal strength!
+            {heroSubtitle}
           </Typography>
           <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button
@@ -187,14 +258,65 @@ const HomePage = () => {
       >
         <Container maxWidth="md">
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold' }}>
-            📍 Find Us & Join The Pack
+            {aboutTitle}
           </Typography>
-          <Typography variant="body1" sx={{ mb: 1, opacity: 0.9 }}>
-            The Fit Bear Gym - Where bears train champions
+          <Typography variant="body1" sx={{ mb: 2, opacity: 0.9, whiteSpace: 'pre-line' }}>
+            {aboutContent}
           </Typography>
-          <Typography variant="body1" sx={{ opacity: 0.9 }}>
-            📞 Contact us to start your transformation journey
-          </Typography>
+
+          {gymInfo?.address && (
+            <Typography variant="body1" sx={{ opacity: 0.9, whiteSpace: 'pre-line' }}>
+              📍 {gymInfo.address}
+            </Typography>
+          )}
+          {gymInfo?.operatingHours && (
+            <Typography variant="body1" sx={{ opacity: 0.9, whiteSpace: 'pre-line' }}>
+              🕒 {formatOperatingHours(gymInfo.operatingHours)}
+            </Typography>
+          )}
+          {gymInfo?.phoneNumber && (
+            <Typography variant="body1" sx={{ opacity: 0.9 }}>
+              📞{' '}
+              <Link href={`tel:${gymInfo.phoneNumber}`} color="inherit">
+                {gymInfo.phoneNumber}
+              </Link>
+            </Typography>
+          )}
+          {gymInfo?.email && (
+            <Typography variant="body1" sx={{ opacity: 0.9 }}>
+              ✉️{' '}
+              <Link href={`mailto:${gymInfo.email}`} color="inherit">
+                {gymInfo.email}
+              </Link>
+            </Typography>
+          )}
+          {!gymInfo?.phoneNumber && !gymInfo?.email && (
+            <Typography variant="body1" sx={{ opacity: 0.9 }}>
+              📞 Contact us to start your transformation journey
+            </Typography>
+          )}
+
+          {socials.length > 0 && (
+            <Stack
+              direction="row"
+              spacing={3}
+              justifyContent="center"
+              sx={{ mt: 3 }}
+            >
+              {socials.map((social) => (
+                <Link
+                  key={social.label}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="inherit"
+                  sx={{ fontWeight: 'bold' }}
+                >
+                  {social.label}
+                </Link>
+              ))}
+            </Stack>
+          )}
         </Container>
       </Box>
     </Box>

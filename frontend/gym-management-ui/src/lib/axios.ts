@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { useAuthStore } from '@store/authStore';
+import { API_CONFIG } from '@constants/config';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5001/api/v1',
+  baseURL: API_CONFIG.BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -38,7 +39,7 @@ axiosInstance.interceptors.response.use(
         }
 
         const response = await axios.post(
-          'http://localhost:5001/api/v1/auth/refresh-token',
+          `${API_CONFIG.BASE_URL}/auth/refresh-token`,
           { refreshToken }
         );
 

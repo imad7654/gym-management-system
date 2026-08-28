@@ -20,7 +20,9 @@ export const TABLE_CONFIG = {
 
 // Form Validation
 export const VALIDATION_CONFIG = {
-  MIN_PASSWORD_LENGTH: 6,
+  // Must match Validation:MinPasswordLength in the API's appsettings.json - the server
+  // rejects anything shorter, so a lower number here only produces failed submits.
+  MIN_PASSWORD_LENGTH: 12,
   MAX_NAME_LENGTH: 100,
   MAX_EMAIL_LENGTH: 255,
   MAX_PHONE_LENGTH: 20,
@@ -91,7 +93,11 @@ export const GENDER_LABELS = {
 export const DASHBOARD_CONFIG = {
   RECENT_CLIENTS_COUNT: 5,
   RECENT_PAYMENTS_COUNT: 5,
-  EXPIRING_MEMBERSHIPS_DAYS: 30,
+  // The "Expiring Soon" stat on the dashboard counts a 7-day window, hardcoded in the
+  // API's DashboardService. Keep this at 7 or the count and the list below it disagree.
+  EXPIRING_MEMBERSHIPS_DAYS: 7,
+  // The API caps GET /dashboard/expiring-memberships at 10 rows.
+  EXPIRING_MEMBERSHIPS_MAX_ROWS: 10,
   CHART_MONTHS_COUNT: 6,
 } as const;
 

@@ -13,6 +13,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
+import { ExpiringMembershipsCard } from '@components/dashboard';
 
 const DashboardPage = () => {
   const { data: stats } = useQuery({
@@ -89,6 +90,10 @@ const DashboardPage = () => {
             icon={<WarningIcon sx={{ fontSize: 40 }} />}
             color="warning.main"
           />
+        </Grid>
+
+        <Grid item xs={12}>
+          <ExpiringMembershipsCard totalCount={stats?.expiringMembershipsCount} />
         </Grid>
 
         <Grid item xs={12}>

@@ -18,6 +18,8 @@ import { DashboardPage } from '@pages/dashboard';
 import { ClientsPage } from '@pages/clients';
 import { PackagesPage } from '@pages/packages';
 import { PaymentsPage } from '@pages/payments';
+import { SettingsPage } from '@pages/settings';
+import { ChangePasswordPage } from '@pages/account';
 
 function App() {
   return (
@@ -46,6 +48,8 @@ function App() {
   <Route path="clients" element={<ClientsPage />} />
   <Route path="payments" element={<PaymentsPage />} />
   <Route path="packages" element={<PackagesPage />} />
+  <Route path="settings" element={<SettingsPage />} />
+  <Route path="change-password" element={<ChangePasswordPage />} />
   <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
 </Route>
 

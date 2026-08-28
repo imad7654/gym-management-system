@@ -2,6 +2,8 @@ import { useState } from 'react';
 import {
   AppBar,
   Box,
+  Button,
+  Divider,
   Drawer,
   IconButton,
   List,
@@ -9,9 +11,10 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Toolbar,
   Typography,
-  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -19,7 +22,10 @@ import {
   People as PeopleIcon,
   LocalOffer as PackageIcon,
   Payment as PaymentIcon,
+  Settings as SettingsIcon,
   Logout as LogoutIcon,
+  ArrowDropDown as ArrowDropDownIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
@@ -28,6 +34,7 @@ const drawerWidth = 240;
 
 export const AdminLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountAnchor, setAccountAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
@@ -37,8 +44,14 @@ export const AdminLayout = () => {
   };
 
   const handleLogout = () => {
+    setAccountAnchor(null);
     logout();
     navigate('/login');
+  };
+
+  const goTo = (path: string) => {
+    setAccountAnchor(null);
+    navigate(path);
   };
 
   const menuItems = [
@@ -46,6 +59,7 @@ export const AdminLayout = () => {
     { text: 'Clients', icon: <PeopleIcon />, path: '/admin/clients' },
     { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
     { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
+    { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
   ];
 
   const drawer = (
@@ -104,12 +118,35 @@ export const AdminLayout = () => {
           <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
             🐻 The Fit Bear Gym
           </Typography>
-          <Typography variant="body1" sx={{ mr: 2 }}>
+          <Button
+            color="inherit"
+            endIcon={<ArrowDropDownIcon />}
+            onClick={(e) => setAccountAnchor(e.currentTarget)}
+            sx={{ textTransform: 'none' }}
+          >
             {user?.fullName || 'Admin'}
-          </Typography>
-          <Button color="inherit" startIcon={<LogoutIcon />} onClick={handleLogout}>
-            Logout
           </Button>
+          <Menu
+            anchorEl={accountAnchor}
+            open={Boolean(accountAnchor)}
+            onClose={() => setAccountAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem onClick={() => goTo('/admin/change-password')}>
+              <ListItemIcon>
+                <LockIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Change password</ListItemText>
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Log out</ListItemText>
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 
