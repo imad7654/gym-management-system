@@ -18,4 +18,15 @@ public interface IMembershipClock
 
     /// <summary>Today's date in the gym's own timezone. Use for every membership date comparison.</summary>
     DateOnly Today { get; }
+
+    /// <summary>
+    /// The two UTC instants that bracket one calendar day at the gym: start inclusive, end
+    /// exclusive.
+    ///
+    /// Payment timestamps are stored in UTC, but "what did we take today" means the day on
+    /// the gym's wall calendar. Beirut runs ahead of UTC, so filtering takings on the UTC
+    /// date files the end of every evening under the wrong day - and the owner counting the
+    /// drawer against it would find money missing that is really just sitting in tomorrow.
+    /// </summary>
+    (DateTime StartUtc, DateTime EndUtc) DayBoundsUtc(DateOnly date);
 }

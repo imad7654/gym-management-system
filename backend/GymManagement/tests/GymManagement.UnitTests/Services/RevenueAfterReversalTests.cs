@@ -127,10 +127,4 @@ public class RevenueAfterReversalTests : IDisposable
             PaymentMethod = PaymentMethod.Cash
         }, userId: 1);
 
-    private sealed class FixedClock : IMembershipClock
-    {
-        public FixedClock(DateOnly today) => Today = today;
-        public DateTime UtcNow => Today.ToDateTime(TimeOnly.MinValue);
-        public DateOnly Today { get; }
-    }
 }

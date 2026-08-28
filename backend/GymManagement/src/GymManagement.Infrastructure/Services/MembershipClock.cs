@@ -46,4 +46,30 @@ public class MembershipClock : IMembershipClock
 
     public DateOnly Today =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _timeZone));
+
+    public (DateTime StartUtc, DateTime EndUtc) DayBoundsUtc(DateOnly date) =>
+        (ToUtc(date.ToDateTime(TimeOnly.MinValue)),
+         ToUtc(date.AddDays(1).ToDateTime(TimeOnly.MinValue)));
+
+    /// <summary>
+    /// Converts a gym-local wall-clock time to the UTC instant it happened at.
+    ///
+    /// The awkward case is the spring clock change. Lebanon moves its clocks at midnight,
+    /// so on that one night local midnight never happens - and it is exactly the boundary a
+    /// day report asks for. ConvertTimeToUtc throws on a time that does not exist, which
+    /// would take the takings report down twice a year, so the first instant that did
+    /// happen is used instead.
+    /// </summary>
+    private DateTime ToUtc(DateTime local)
+    {
+        if (_timeZone.IsInvalidTime(local))
+        {
+            local = local.AddHours(1);
+        }
+
+        // An ambiguous time - the autumn hour that happens twice - resolves to standard
+        // time, which is the earlier of the two. That is the right edge for a day boundary:
+        // it keeps the day whole rather than clipping an hour off its start.
+        return TimeZoneInfo.ConvertTimeToUtc(local, _timeZone);
+    }
 }

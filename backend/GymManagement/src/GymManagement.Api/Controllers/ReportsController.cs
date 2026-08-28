@@ -32,4 +32,20 @@ public class ReportsController : ControllerBase
         var report = await _reportService.GetWhoOwesMoneyAsync(cancellationToken);
         return Ok(ApiResponse<WhoOwesMoneyDto>.SuccessResponse(report));
     }
+
+    /// <summary>
+    /// One day's money, split into what should be in the drawer and what arrived by phone.
+    /// </summary>
+    /// <param name="date">
+    /// A gym-calendar date as yyyy-MM-dd. Defaults to today in the gym's timezone, which is
+    /// not necessarily the server's or the browser's.
+    /// </param>
+    [HttpGet("daily-takings")]
+    [ProducesResponseType(typeof(ApiResponse<DailyTakingsDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDailyTakings(
+        [FromQuery] DateOnly? date, CancellationToken cancellationToken)
+    {
+        var report = await _reportService.GetDailyTakingsAsync(date, cancellationToken);
+        return Ok(ApiResponse<DailyTakingsDto>.SuccessResponse(report));
+    }
 }

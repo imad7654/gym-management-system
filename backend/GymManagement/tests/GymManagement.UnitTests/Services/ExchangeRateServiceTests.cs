@@ -137,10 +137,4 @@ public class ExchangeRateServiceTests : IDisposable
         _context.ExchangeRates.Should().BeEmpty();
     }
 
-    private sealed class FixedClock : IMembershipClock
-    {
-        public FixedClock(DateOnly today) => Today = today;
-        public DateTime UtcNow => Today.ToDateTime(TimeOnly.MinValue);
-        public DateOnly Today { get; }
-    }
 }

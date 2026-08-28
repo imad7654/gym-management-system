@@ -444,3 +444,35 @@ export interface WhoOwesMoney {
   /** Longest outstanding first. */
   members: OwedAmount[];
 }
+
+// Daily takings (blueprint 9.3)
+export interface TakingsPayment {
+  id: number;
+  takenAt: string;
+  clientName: string;
+  packageName: string;
+  paymentMethod: PaymentMethodString;
+  currency: CurrencyString;
+  amountReceived: number;
+  amountUsd: number;
+  exchangeRate?: number;
+  isReversal: boolean;
+}
+
+export interface DailyTakings {
+  date: string;
+  /** In the drawer */
+  cashUsd: number;
+  cashLbpReceived: number;
+  cashLbpInUsd: number;
+  drawerTotalUsd: number;
+  /** Came in, but not in the drawer */
+  whishUsd: number;
+  otherUsd: number;
+  totalUsd: number;
+  paymentCount: number;
+  reversalCount: number;
+  /** Negative. Already included in the totals above. */
+  reversalsUsd: number;
+  payments: TakingsPayment[];
+}

@@ -603,10 +603,4 @@ public class MemberImportServiceTests : IDisposable
     private Task<MemberImportResultDto> Commit(byte[] csv, string hash, bool acknowledgeSkipped, int? userId) =>
         _service.CommitAsync(new MemoryStream(csv), "members.csv", hash, acknowledgeSkipped, userId);
 
-    private sealed class FixedClock : IMembershipClock
-    {
-        public FixedClock(DateOnly today) => Today = today;
-        public DateTime UtcNow => Today.ToDateTime(TimeOnly.MinValue);
-        public DateOnly Today { get; }
-    }
 }
