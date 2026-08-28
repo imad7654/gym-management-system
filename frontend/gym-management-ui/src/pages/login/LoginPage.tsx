@@ -94,14 +94,6 @@ const LoginPage = () => {
             {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
           </Button>
         </Box>
-
-        <Box sx={{ mt: 3, p: 2, bgcolor: 'info.lighter', borderRadius: 1 }}>
-          <Typography variant="caption" color="text.secondary">
-            Default credentials:<br />
-            Email: admin@gym.com<br />
-            Password: Admin@123
-          </Typography>
-        </Box>
       </Paper>
     </Container>
   );
