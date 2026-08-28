@@ -21,6 +21,7 @@ import { PaymentsPage } from '@pages/payments';
 import { SettingsPage } from '@pages/settings';
 import { ChangePasswordPage } from '@pages/account';
 import { ImportMembersPage } from '@pages/import';
+import { WhoOwesMoneyPage } from '@pages/reports';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
   <Route path="clients" element={<ClientsPage />} />
   <Route path="clients/import" element={<ImportMembersPage />} />
   <Route path="payments" element={<PaymentsPage />} />
+  <Route path="reports/who-owes" element={<WhoOwesMoneyPage />} />
   <Route path="packages" element={<PackagesPage />} />
   <Route path="settings" element={<SettingsPage />} />
   <Route path="change-password" element={<ChangePasswordPage />} />

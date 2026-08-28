@@ -65,6 +65,17 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         builder.HasIndex(p => p.ReversesPaymentId);
 
+        // A part payment points at the payment that finished paying for its package.
+        // Restrict for the same reason as a reversal: the row it refers to explains where
+        // the money went, and money rows are never deleted.
+        builder.HasOne(p => p.SettledByPayment)
+            .WithMany()
+            .HasForeignKey(p => p.SettledByPaymentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The who-owes-money list and every part payment credit read exactly this shape.
+        builder.HasIndex(p => new { p.ClientId, p.PackageId, p.SettledByPaymentId });
+
         builder.HasMany(p => p.PaymentHistories)
             .WithOne(ph => ph.Payment)
             .HasForeignKey(ph => ph.PaymentId)

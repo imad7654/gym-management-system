@@ -27,6 +27,7 @@ import {
   ArrowDropDown as ArrowDropDownIcon,
   Lock as LockIcon,
   UploadFile as UploadFileIcon,
+  MoneyOff as MoneyOffIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
@@ -60,6 +61,7 @@ export const AdminLayout = () => {
     { text: 'Clients', icon: <PeopleIcon />, path: '/admin/clients' },
     { text: 'Import Members', icon: <UploadFileIcon />, path: '/admin/clients/import' },
     { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
+    { text: 'Who Owes Money', icon: <MoneyOffIcon />, path: '/admin/reports/who-owes' },
     { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
   ];

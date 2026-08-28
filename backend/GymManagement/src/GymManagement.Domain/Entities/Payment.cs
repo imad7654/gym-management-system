@@ -48,6 +48,20 @@ public class Payment : AuditableEntity
     /// </summary>
     public int? ReversesPaymentId { get; set; }
 
+    /// <summary>
+    /// Set on a part payment once a later payment finished paying for the package, pointing
+    /// at the payment that completed it.
+    ///
+    /// Without this, money a member put down cannot be told apart from money still waiting
+    /// to be used, and their next payment would be discounted all over again by a part
+    /// payment already spent.
+    ///
+    /// Deliberately not <see cref="PeriodStartDate"/>: the period is stamped only on the
+    /// payment that actually completed the purchase, so reversing that one payment takes
+    /// back the days exactly once.
+    /// </summary>
+    public int? SettledByPaymentId { get; set; }
+
     public string? TransactionReference { get; set; }
     public string? Notes { get; set; }
 
@@ -58,5 +72,12 @@ public class Payment : AuditableEntity
     public virtual Client Client { get; set; } = null!;
     public virtual Package Package { get; set; } = null!;
     public virtual Payment? ReversesPayment { get; set; }
+
+    /// <summary>
+    /// The later payment that finished paying for this one's package. Assigned through the
+    /// navigation rather than the id, so EF Core fills in the foreign key once the
+    /// completing payment gets its identity in the same SaveChanges.
+    /// </summary>
+    public virtual Payment? SettledByPayment { get; set; }
     public virtual ICollection<PaymentHistory> PaymentHistories { get; set; } = new List<PaymentHistory>();
 }

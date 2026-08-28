@@ -423,3 +423,24 @@ export interface ExchangeRate {
   daysOld: number;
   isStale: boolean;
 }
+
+// Who owes money (blueprint 6.5 / phase 1 reporting)
+export interface OwedAmount {
+  clientId: number;
+  clientName: string;
+  phoneNumber: string;
+  packageName: string;
+  packagePrice: number;
+  amountPaid: number;
+  amountOwed: number;
+  owingSince: string;
+  daysOutstanding: number;
+  membershipStatus: MembershipStatusString;
+}
+
+export interface WhoOwesMoney {
+  totalOwed: number;
+  memberCount: number;
+  /** Longest outstanding first. */
+  members: OwedAmount[];
+}

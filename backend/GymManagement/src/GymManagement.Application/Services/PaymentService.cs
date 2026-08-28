@@ -167,28 +167,68 @@ public class PaymentService : IPaymentService
             CreatedBy = userId
         };
 
+        // What this member has already put toward this package without getting anything for
+        // it yet. Judging each payment against the full price on its own meant a member who
+        // paid 30 and came back with 20 was told they had underpaid twice and never got the
+        // month they had paid for in full.
+        var alreadyPaid = await _unitOfWork.Payments.Query()
+            .Where(p => p.ClientId == client.Id && p.PackageId == package.Id)
+            .OutstandingCredit()
+            .SumAsync(p => p.Amount, cancellationToken);
+
+        var totalTowardPackage = alreadyPaid + amountUsd;
+
         string description;
 
-        if (amountUsd < package.Price)
+        if (totalTowardPackage < package.Price)
         {
             // Recorded, but the membership does not move. A half payment that silently
             // unlocks a full month is how a gym loses track of its income.
             client.PaymentStatus = PaymentStatus.Partial;
 
-            var shortfall = package.Price - amountUsd;
-            description =
-                $"Partial payment of {amountUsd:0.00} USD against {package.Name} " +
-                $"({package.Price:0.00} USD). Membership not extended; {shortfall:0.00} USD outstanding.";
+            var shortfall = package.Price - totalTowardPackage;
+            description = alreadyPaid > 0
+                ? $"Part payment of {amountUsd:0.00} USD against {package.Name} "
+                  + $"({package.Price:0.00} USD). {totalTowardPackage:0.00} USD paid so far; "
+                  + $"membership not extended, {shortfall:0.00} USD still outstanding."
+                : $"Partial payment of {amountUsd:0.00} USD against {package.Name} "
+                  + $"({package.Price:0.00} USD). Membership not extended; {shortfall:0.00} USD outstanding.";
         }
         else
         {
             var period = client.ExtendMembership(package, today);
+
+            // The period goes on this payment alone, even when earlier part payments helped
+            // pay for it. It is the marker the reversal uses to decide how many days to take
+            // back, so stamping it on several rows would take the days back several times.
             payment.PeriodStartDate = period.Start.ToDateTime(TimeOnly.MinValue);
             payment.PeriodEndDate = period.End.ToDateTime(TimeOnly.MinValue);
 
-            description =
-                $"Payment of {amountUsd:0.00} USD for {package.Name}. " +
-                $"Membership runs {period.Start:yyyy-MM-dd} to {period.End:yyyy-MM-dd}.";
+            if (alreadyPaid > 0)
+            {
+                // The earlier part payments have now been spent. Marking them stops the
+                // member's next payment being discounted by money already used up.
+                var contributions = await _unitOfWork.Payments.Query()
+                    .Where(p => p.ClientId == client.Id && p.PackageId == package.Id)
+                    .OutstandingCredit()
+                    .ToListAsync(cancellationToken);
+
+                foreach (var contribution in contributions)
+                {
+                    contribution.SettledByPayment = payment;
+                }
+
+                description =
+                    $"Payment of {amountUsd:0.00} USD completing {package.Name}, with "
+                    + $"{alreadyPaid:0.00} USD already paid. "
+                    + $"Membership runs {period.Start:yyyy-MM-dd} to {period.End:yyyy-MM-dd}.";
+            }
+            else
+            {
+                description =
+                    $"Payment of {amountUsd:0.00} USD for {package.Name}. "
+                    + $"Membership runs {period.Start:yyyy-MM-dd} to {period.End:yyyy-MM-dd}.";
+            }
         }
 
         await _unitOfWork.Payments.AddAsync(payment, cancellationToken);
@@ -241,6 +281,16 @@ public class PaymentService : IPaymentService
             throw new BusinessException("This payment has already been reversed.");
         }
 
+        if (original.SettledByPaymentId.HasValue)
+        {
+            // This was a part payment that a later payment finished off, and that later
+            // payment is what bought the days. Undoing this one first would leave a
+            // membership paid for by money that is no longer there.
+            throw new BusinessException(
+                $"This was a part payment towards a membership that payment #{original.SettledByPaymentId} "
+                + "completed. Reverse that payment first.");
+        }
+
         var client = await _unitOfWork.Clients.Query()
             .FirstOrDefaultAsync(c => c.Id == original.ClientId, cancellationToken)
             ?? throw new NotFoundException("Client", original.ClientId);
@@ -267,13 +317,53 @@ public class PaymentService : IPaymentService
             CreatedBy = userId
         };
 
+        // What the member had put down and not yet used, as things stood before this
+        // reversal. Read now, while the rows still say what they said.
+        var outstandingBefore = await _unitOfWork.Payments.Query()
+            .Where(p => p.ClientId == client.Id)
+            .OutstandingCredit()
+            .SumAsync(p => p.Amount, cancellationToken);
+
         // Only a payment that actually extended the membership has days to take back; a
         // partial payment never moved the dates.
         var extendedMembership = original.PeriodStartDate.HasValue && original.PeriodEndDate.HasValue;
+        decimal restoredCredit = 0;
+
         if (extendedMembership)
         {
             client.WindBackMembership(original.Package.DurationDays, _clock.Today);
+
+            // Any part payments this one finished off go back to being money the member has
+            // put down and not yet used. Leaving them settled would quietly swallow cash the
+            // member really did hand over, and drop them off the who-owes-money list.
+            var contributions = await _unitOfWork.Payments.Query()
+                .Where(p => p.SettledByPaymentId == original.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var contribution in contributions)
+            {
+                contribution.SettledByPaymentId = null;
+            }
+
+            restoredCredit = contributions.Sum(c => c.Amount);
         }
+
+        // Worked out in memory rather than by re-querying, so the whole reversal stays one
+        // SaveChanges and therefore one transaction.
+        //
+        // The reversal row itself only reduces credit when the payment it cancels was
+        // credit. Reversing a payment that bought a period has already been accounted for
+        // by winding the membership back; counting it here too would subtract the same
+        // money twice and leave the member owing for a month they had paid off.
+        var stillOwed = outstandingBefore
+            + restoredCredit
+            + (extendedMembership ? 0 : -original.Amount);
+
+        client.PaymentStatus = stillOwed > 0
+            ? PaymentStatus.Partial
+            : MembershipStatuses.AllowedIn.Contains(client.MembershipStatus)
+                ? PaymentStatus.Paid
+                : PaymentStatus.Pending;
 
         await _unitOfWork.Payments.AddAsync(reversal, cancellationToken);
 
