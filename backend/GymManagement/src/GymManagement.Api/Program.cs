@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using GymManagement.Application;
 using GymManagement.Application.Interfaces;
 using GymManagement.Infrastructure;
@@ -27,6 +28,14 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilter>();
+})
+.AddJsonOptions(options =>
+{
+    // Enums travel as their names ("Cash", "Lbp"), not as integers. The frontend already
+    // types them as string literals, and without this converter those requests fail to
+    // bind. Names also survive someone inserting a new enum member in the middle, which
+    // ordinals do not.
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 builder.Services.AddEndpointsApiExplorer();
 

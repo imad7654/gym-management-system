@@ -5,5 +5,8 @@ public enum PaymentMethod
     Cash,
     Card,
     BankTransfer,
-    Other
+    Other,
+
+    /// <summary>Paid by the member through the hosted checkout, not at the desk.</summary>
+    Online
 }

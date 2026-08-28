@@ -1,5 +1,6 @@
 using GymManagement.Application.DTOs.Client;
 using GymManagement.Application.DTOs.Common;
+using GymManagement.Application.Interfaces;
 using GymManagement.Domain.Entities;
 using GymManagement.Domain.Enums;
 using GymManagement.Domain.Interfaces;
@@ -21,10 +22,12 @@ public interface IClientService
 public class ClientService : IClientService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMembershipClock _clock;
 
-    public ClientService(IUnitOfWork unitOfWork)
+    public ClientService(IUnitOfWork unitOfWork, IMembershipClock clock)
     {
         _unitOfWork = unitOfWork;
+        _clock = clock;
     }
 
     public async Task<PaginatedResult<ClientListDto>> GetClientsAsync(ClientQueryParameters parameters, CancellationToken cancellationToken = default)
@@ -132,7 +135,7 @@ public class ClientService : IClientService
             {
                 client.MembershipStartDate = request.MembershipStartDate.Value;
                 client.MembershipEndDate = request.MembershipStartDate.Value.AddDays(package.DurationDays);
-                client.UpdateMembershipStatus();
+                client.UpdateMembershipStatus(_clock.Today);
             }
         }
 
@@ -174,7 +177,7 @@ public class ClientService : IClientService
             client.PaymentStatus = request.PaymentStatus.Value;
         }
 
-        client.UpdateMembershipStatus();
+        client.UpdateMembershipStatus(_clock.Today);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -203,19 +206,20 @@ public class ClientService : IClientService
 
         if (client == null) return false;
 
-        client.Restore();
+        client.Restore(_clock.Today);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
 
     public async Task<List<ClientListDto>> GetExpiringClientsAsync(int days = 7, CancellationToken cancellationToken = default)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = _clock.Today.ToDateTime(TimeOnly.MinValue);
         var endDate = today.AddDays(days);
 
         return await _unitOfWork.Clients.Query()
             .Include(c => c.CurrentPackage)
-            .Where(c => c.MembershipEndDate >= today && c.MembershipEndDate <= endDate && c.MembershipStatus == MembershipStatus.Active)
+            .Where(c => c.MembershipEndDate >= today && c.MembershipEndDate <= endDate
+                && MembershipStatuses.AllowedIn.Contains(c.MembershipStatus))
             .OrderBy(c => c.MembershipEndDate)
             .Select(c => new ClientListDto
             {

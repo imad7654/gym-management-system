@@ -15,6 +15,17 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(p => p.Amount)
             .HasPrecision(10, 2);
 
+        // Wider than Amount because an LBP figure for the same package runs to millions.
+        builder.Property(p => p.AmountReceived)
+            .HasPrecision(14, 2);
+
+        builder.Property(p => p.ExchangeRate)
+            .HasPrecision(14, 2);
+
+        builder.Property(p => p.Currency)
+            .HasConversion<string>()
+            .HasMaxLength(3);
+
         builder.Property(p => p.PaymentMethod)
             .HasConversion<string>()
             .HasMaxLength(20);
@@ -43,6 +54,16 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .WithMany(pkg => pkg.Payments)
             .HasForeignKey(p => p.PackageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // A reversal points back at the payment it cancels. Restrict, not Cascade: deleting
+        // the row a reversal refers to would leave the books unexplainable, and money rows
+        // are never deleted anyway.
+        builder.HasOne(p => p.ReversesPayment)
+            .WithMany()
+            .HasForeignKey(p => p.ReversesPaymentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(p => p.ReversesPaymentId);
 
         builder.HasMany(p => p.PaymentHistories)
             .WithOne(ph => ph.Payment)

@@ -23,7 +23,7 @@ import { paymentService } from '@services/paymentService';
 import AddIcon from '@mui/icons-material/Add';
 import ReplayIcon from '@mui/icons-material/Replay';
 import type { PaymentListItem, PaymentQueryParams, PaymentMethodString, TransactionStatusString } from '../../types/index';
-import { PaymentFormDialog, RefundPaymentDialog } from '@components/payments';
+import { PaymentFormDialog, ReversePaymentDialog } from '@components/payments';
 
 const PaymentsPage = () => {
   const [queryParams, setQueryParams] = useState<PaymentQueryParams>({
@@ -31,17 +31,17 @@ const PaymentsPage = () => {
     pageSize: 10,
   });
   const [openFormDialog, setOpenFormDialog] = useState(false);
-  const [openRefundDialog, setOpenRefundDialog] = useState(false);
-  const [paymentToRefund, setPaymentToRefund] = useState<PaymentListItem | null>(null);
+  const [openReverseDialog, setOpenReverseDialog] = useState(false);
+  const [paymentToReverse, setPaymentToReverse] = useState<PaymentListItem | null>(null);
 
   const { data: paymentsData, isLoading } = useQuery({
     queryKey: ['payments', queryParams],
     queryFn: () => paymentService.getPayments(queryParams),
   });
 
-  const handleRefund = (payment: PaymentListItem) => {
-    setPaymentToRefund(payment);
-    setOpenRefundDialog(true);
+  const handleReverse = (payment: PaymentListItem) => {
+    setPaymentToReverse(payment);
+    setOpenReverseDialog(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -181,13 +181,19 @@ const PaymentsPage = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title={payment.status === 'Completed' ? 'Refund payment' : 'Only completed payments can be refunded'}>
+                    <Tooltip
+                      title={
+                        payment.isReversal
+                          ? 'This row is a reversal of another payment'
+                          : 'Reverse this payment'
+                      }
+                    >
                       <span>
                         <IconButton
                           size="small"
                           color="warning"
-                          disabled={payment.status !== 'Completed'}
-                          onClick={() => handleRefund(payment)}
+                          disabled={payment.isReversal}
+                          onClick={() => handleReverse(payment)}
                         >
                           <ReplayIcon />
                         </IconButton>
@@ -223,13 +229,13 @@ const PaymentsPage = () => {
 
       <PaymentFormDialog open={openFormDialog} onClose={() => setOpenFormDialog(false)} />
 
-      <RefundPaymentDialog
-        open={openRefundDialog}
+      <ReversePaymentDialog
+        open={openReverseDialog}
         onClose={() => {
-          setOpenRefundDialog(false);
-          setPaymentToRefund(null);
+          setOpenReverseDialog(false);
+          setPaymentToReverse(null);
         }}
-        payment={paymentToRefund}
+        payment={paymentToReverse}
       />
     </Container>
   );

@@ -6,11 +6,29 @@ export enum Gender {
   PreferNotToSay = 3
 }
 
+// The API sends and accepts enum *names*, so these string unions - not the numeric enums
+// below - are what actually travels on the wire. Keep them identical to the backend enums
+// in GymManagement.Domain/Enums.
+export type GenderString = 'Male' | 'Female' | 'Other' | 'PreferNotToSay';
+export type MembershipStatusString =
+  | 'Pending'
+  | 'Active'
+  | 'Expiring'
+  | 'Expired'
+  | 'Suspended';
+export type PaymentStatusString = 'Paid' | 'Pending' | 'Overdue' | 'Partial';
+export type PaymentMethodString = 'Cash' | 'Card' | 'BankTransfer' | 'Other' | 'Online';
+export type TransactionStatusString = 'Completed' | 'Pending' | 'Failed' | 'Refunded';
+export type CurrencyString = 'Usd' | 'Lbp';
+
+/** Statuses that let a member through the door. Mirrors MembershipStatuses.AllowedIn. */
+export const MEMBERSHIP_STATUSES_ALLOWED_IN: MembershipStatusString[] = ['Active', 'Expiring'];
+
 export enum MembershipStatus {
-  Active = 0,
-  Expired = 1,
-  Pending = 2,
-  Cancelled = 3,
+  Pending = 0,
+  Active = 1,
+  Expiring = 2,
+  Expired = 3,
   Suspended = 4
 }
 
@@ -18,22 +36,16 @@ export enum PaymentStatus {
   Paid = 0,
   Pending = 1,
   Overdue = 2,
-  PartiallyPaid = 3
+  Partial = 3
 }
 
 export enum PaymentMethod {
   Cash = 0,
   Card = 1,
   BankTransfer = 2,
-  Other = 3
+  Other = 3,
+  Online = 4
 }
-
-// Type-safe string literals
-export type GenderString = 'Male' | 'Female' | 'Other' | 'PreferNotToSay';
-export type MembershipStatusString = 'Active' | 'Expired' | 'Pending' | 'Cancelled' | 'Suspended';
-export type PaymentStatusString = 'Paid' | 'Pending' | 'Overdue' | 'PartiallyPaid';
-export type PaymentMethodString = 'Cash' | 'Card' | 'BankTransfer' | 'Other';
-export type TransactionStatusString = 'Completed' | 'Pending' | 'Failed' | 'Refunded';
 
 // Mapping helpers
 export const GenderMap: Record<GenderString, Gender> = {
@@ -51,18 +63,18 @@ export const GenderReverseMap: Record<Gender, GenderString> = {
 };
 
 export const MembershipStatusMap: Record<MembershipStatusString, MembershipStatus> = {
-  Active: MembershipStatus.Active,
-  Expired: MembershipStatus.Expired,
   Pending: MembershipStatus.Pending,
-  Cancelled: MembershipStatus.Cancelled,
+  Active: MembershipStatus.Active,
+  Expiring: MembershipStatus.Expiring,
+  Expired: MembershipStatus.Expired,
   Suspended: MembershipStatus.Suspended
 };
 
 export const MembershipStatusReverseMap: Record<MembershipStatus, MembershipStatusString> = {
-  [MembershipStatus.Active]: 'Active',
-  [MembershipStatus.Expired]: 'Expired',
   [MembershipStatus.Pending]: 'Pending',
-  [MembershipStatus.Cancelled]: 'Cancelled',
+  [MembershipStatus.Active]: 'Active',
+  [MembershipStatus.Expiring]: 'Expiring',
+  [MembershipStatus.Expired]: 'Expired',
   [MembershipStatus.Suspended]: 'Suspended'
 };
 
@@ -70,14 +82,15 @@ export const PaymentStatusMap: Record<PaymentStatusString, PaymentStatus> = {
   Paid: PaymentStatus.Paid,
   Pending: PaymentStatus.Pending,
   Overdue: PaymentStatus.Overdue,
-  PartiallyPaid: PaymentStatus.PartiallyPaid
+  Partial: PaymentStatus.Partial
 };
 
 export const PaymentMethodMap: Record<PaymentMethodString, PaymentMethod> = {
   Cash: PaymentMethod.Cash,
   Card: PaymentMethod.Card,
   BankTransfer: PaymentMethod.BankTransfer,
-  Other: PaymentMethod.Other
+  Other: PaymentMethod.Other,
+  Online: PaymentMethod.Online
 };
 
 // API Response types
@@ -220,12 +233,25 @@ export interface Payment {
   clientName: string;
   packageId: number;
   packageName: string;
+  /** The USD figure. The only one any report adds up. Negative on a reversal. */
   amount: number;
+  /** What the member physically handed over, in `currency`. */
+  amountReceived: number;
+  currency: CurrencyString;
+  /** LBP per USD at the time of payment. Null when paid in USD. */
+  exchangeRate?: number;
   paymentDate: string;
-  paymentMethod: string;
-  status: string;
-  periodStartDate: string;
-  periodEndDate: string;
+  paymentMethod: PaymentMethodString;
+  status: TransactionStatusString;
+  /** Null when the payment did not cover the price, and on reversal rows. */
+  periodStartDate?: string;
+  periodEndDate?: string;
+  /** Set on a reversal row to the payment it cancels. */
+  reversesPaymentId?: number;
+  /** True when this payment was short of the package price. */
+  isPartial: boolean;
+  /** How much of the package price is still owed. Zero on a full payment. */
+  amountOutstanding: number;
   transactionReference?: string;
   notes?: string;
   createdAt: string;
@@ -236,21 +262,33 @@ export interface PaymentListItem {
   clientName: string;
   packageName: string;
   amount: number;
+  amountReceived: number;
+  currency: CurrencyString;
   paymentDate: string;
-  paymentMethod: string;
-  status: string;
+  paymentMethod: PaymentMethodString;
+  status: TransactionStatusString;
+  isReversal: boolean;
 }
 
+/**
+ * Note what is absent: neither the price nor the membership period is sent. The server
+ * works both out from the package, so the browser cannot buy a year for a month's money.
+ */
 export interface CreatePaymentRequest {
   clientId: number;
   packageId: number;
-  amount: number;
-  paymentDate: string;
+  /** What the member handed over, in `currency`. */
+  amountReceived: number;
+  currency: CurrencyString;
+  /** Required when currency is 'Lbp', ignored otherwise. */
+  exchangeRate?: number;
   paymentMethod: PaymentMethodString;
-  periodStartDate: string;
-  periodEndDate: string;
   transactionReference?: string;
   notes?: string;
+}
+
+export interface ReversePaymentRequest {
+  reason?: string;
 }
 
 export interface PaymentQueryParams {

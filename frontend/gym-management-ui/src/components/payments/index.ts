@@ -1,2 +1,2 @@
 export { PaymentFormDialog } from './PaymentFormDialog';
-export { RefundPaymentDialog } from './RefundPaymentDialog';
+export { ReversePaymentDialog } from './ReversePaymentDialog';

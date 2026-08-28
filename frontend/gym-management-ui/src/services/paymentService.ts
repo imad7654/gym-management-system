@@ -6,6 +6,7 @@ import {
   Payment,
   PaymentListItem,
   PaymentQueryParams,
+  ReversePaymentRequest,
 } from '@app-types/index';
 
 export const paymentService = {
@@ -33,7 +34,15 @@ export const paymentService = {
     return response.data.data!;
   },
 
-  refundPayment: async (id: number): Promise<void> => {
-    await axiosInstance.post(`/payments/${id}/refund`);
+  /**
+   * Reverses a payment. The original row is never edited - the server writes a second row
+   * cancelling it and takes back the days it bought. Returns that reversal row.
+   */
+  reversePayment: async (id: number, reason?: string): Promise<Payment> => {
+    const response = await axiosInstance.post<ApiResponse<Payment>>(
+      `/payments/${id}/reverse`,
+      { reason } satisfies ReversePaymentRequest
+    );
+    return response.data.data!;
   },
 };

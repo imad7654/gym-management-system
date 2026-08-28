@@ -13,26 +13,35 @@ import {
   CircularProgress,
   InputAdornment,
   Snackbar,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+  Box,
 } from '@mui/material';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '@services/clientService';
 import { packageService } from '@services/packageService';
 import { paymentService } from '@services/paymentService';
-import { ClientListItem, PaymentMethodMap, PaymentMethodString } from '@app-types/index';
+import {
+  ClientListItem,
+  CurrencyString,
+  PaymentMethodMap,
+  PaymentMethodString,
+} from '@app-types/index';
 
 interface PaymentFormDialogProps {
   open: boolean;
   onClose: () => void;
 }
 
-const addDays = (dateStr: string, days: number) => {
-  const date = new Date(dateStr);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
-};
-
-const today = () => new Date().toISOString().split('T')[0];
-
+/**
+ * The desk payment form.
+ *
+ * Reception enters only what it can actually observe: who is paying, for what, how, and
+ * how much changed hands. The price, the membership period and the USD conversion are all
+ * worked out by the server from the package. The figures shown below the form are a
+ * preview of that calculation, never the source of it.
+ */
 export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => {
   const queryClient = useQueryClient();
   const [showSuccess, setShowSuccess] = useState(false);
@@ -42,11 +51,10 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
 
   const [formData, setFormData] = useState({
     packageId: '' as number | '',
-    amount: '',
-    paymentDate: today(),
+    amountReceived: '',
+    currency: 'Usd' as CurrencyString,
+    exchangeRate: '',
     paymentMethod: 'Cash' as PaymentMethodString,
-    periodStartDate: today(),
-    periodEndDate: '',
     transactionReference: '',
     notes: '',
   });
@@ -64,37 +72,43 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
   });
 
   const selectedPackage = packages?.find((p) => p.id === formData.packageId);
-
-  useEffect(() => {
-    if (!open) resetForm();
-  }, [open]);
-
-  // Auto-fill amount and period end date when the package or start date changes
-  useEffect(() => {
-    if (selectedPackage) {
-      setFormData((prev) => ({
-        ...prev,
-        amount: prev.amount || selectedPackage.price.toString(),
-        periodEndDate: addDays(prev.periodStartDate, selectedPackage.durationDays),
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.packageId, formData.periodStartDate]);
+  const isLbp = formData.currency === 'Lbp';
 
   const resetForm = () => {
     setSelectedClient(null);
     setClientSearch('');
     setFormData({
       packageId: '',
-      amount: '',
-      paymentDate: today(),
+      amountReceived: '',
+      currency: 'Usd',
+      exchangeRate: '',
       paymentMethod: 'Cash',
-      periodStartDate: today(),
-      periodEndDate: '',
       transactionReference: '',
       notes: '',
     });
   };
+
+  useEffect(() => {
+    if (!open) resetForm();
+  }, [open]);
+
+  // Prefill what they owe, in whichever currency is selected. Reception can overwrite it -
+  // this is a convenience, and the server checks the real figure either way.
+  useEffect(() => {
+    if (!selectedPackage) return;
+
+    const rate = parseFloat(formData.exchangeRate);
+    const suggested = isLbp
+      ? rate > 0
+        ? Math.round(selectedPackage.price * rate).toString()
+        : ''
+      : selectedPackage.price.toFixed(2);
+
+    if (suggested) {
+      setFormData((prev) => ({ ...prev, amountReceived: suggested }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.packageId, formData.currency, formData.exchangeRate]);
 
   const createMutation = useMutation({
     mutationFn: paymentService.createPayment,
@@ -110,13 +124,27 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
     },
   });
 
+  const received = parseFloat(formData.amountReceived);
+  const rate = parseFloat(formData.exchangeRate);
+
+  /** Mirrors the server's conversion so the desk can see the result before submitting. */
+  const amountUsd = isLbp
+    ? received > 0 && rate > 0
+      ? received / rate
+      : null
+    : received > 0
+    ? received
+    : null;
+
+  const shortfall =
+    selectedPackage && amountUsd !== null ? selectedPackage.price - amountUsd : null;
+  const isShort = shortfall !== null && shortfall > 0.004;
+
   const isValid =
     !!selectedClient &&
     !!formData.packageId &&
-    Number(formData.amount) > 0 &&
-    !!formData.paymentDate &&
-    !!formData.periodStartDate &&
-    !!formData.periodEndDate;
+    received > 0 &&
+    (!isLbp || rate > 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,31 +153,29 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
     createMutation.mutate({
       clientId: selectedClient.id,
       packageId: formData.packageId as number,
-      amount: parseFloat(formData.amount),
-      paymentDate: formData.paymentDate,
+      amountReceived: received,
+      currency: formData.currency,
+      exchangeRate: isLbp ? rate : undefined,
       paymentMethod: formData.paymentMethod,
-      periodStartDate: formData.periodStartDate,
-      periodEndDate: formData.periodEndDate,
       transactionReference: formData.transactionReference || undefined,
       notes: formData.notes || undefined,
     });
   };
 
+  const errorMessage =
+    (createMutation.error as { response?: { data?: { message?: string } } } | null)
+      ?.response?.data?.message ?? 'Failed to record payment. Please try again.';
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle>Record Payment</DialogTitle>
+        <DialogTitle>Take a payment</DialogTitle>
         <DialogContent>
           {createMutation.isError && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              Failed to record payment. Please try again.
+              {errorMessage}
             </Alert>
           )}
-
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Recording a payment sets this as the client's current package and renews
-            their membership through the period end date below.
-          </Alert>
 
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
@@ -166,8 +192,8 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
                   <TextField
                     {...params}
                     required
-                    label="Client"
-                    placeholder="Search by name, phone, or email..."
+                    label="Member"
+                    placeholder="Search by phone or name..."
                     InputProps={{
                       ...params.InputProps,
                       endAdornment: (
@@ -182,7 +208,7 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 required
@@ -195,47 +221,109 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
               >
                 {packages?.map((pkg) => (
                   <MenuItem key={pkg.id} value={pkg.id}>
-                    {pkg.name} — ${pkg.price.toFixed(2)}
+                    {pkg.name} — ${pkg.price.toFixed(2)} · {pkg.durationDays} days
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={formData.currency}
+                onChange={(_, value: CurrencyString | null) =>
+                  value && setFormData({ ...formData, currency: value, amountReceived: '' })
+                }
+              >
+                <ToggleButton value="Usd">Paid in USD</ToggleButton>
+                <ToggleButton value="Lbp">Paid in LBP</ToggleButton>
+              </ToggleButtonGroup>
+            </Grid>
+
+            {isLbp && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Rate today"
+                  type="number"
+                  value={formData.exchangeRate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, exchangeRate: e.target.value })
+                  }
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">LBP / $</InputAdornment>,
+                  }}
+                  inputProps={{ min: '0.01', step: '0.01' }}
+                  helperText="Stored with the payment and never recalculated"
+                />
+              </Grid>
+            )}
+
+            <Grid item xs={12} sm={isLbp ? 6 : 12}>
               <TextField
                 fullWidth
                 required
-                label="Amount"
+                label="Amount received"
                 type="number"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                value={formData.amountReceived}
+                onChange={(e) =>
+                  setFormData({ ...formData, amountReceived: e.target.value })
+                }
                 InputProps={{
-                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">{isLbp ? 'LBP' : '$'}</InputAdornment>
+                  ),
                 }}
-                inputProps={{ min: '0.01', step: '0.01' }}
+                inputProps={{ min: '0.01', step: isLbp ? '1000' : '0.01' }}
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                required
-                type="date"
-                label="Payment Date"
-                value={formData.paymentDate}
-                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
+            {selectedPackage && amountUsd !== null && (
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: 'action.hover',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 2,
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    {isLbp ? 'Converts to' : 'Counts as'}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    ${amountUsd.toFixed(2)} of ${selectedPackage.price.toFixed(2)}
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+
+            {isShort && (
+              <Grid item xs={12}>
+                <Alert severity="warning">
+                  This is ${shortfall!.toFixed(2)} short of the package price. The payment
+                  will be recorded and the member will show as owing the difference, but
+                  their membership will <strong>not</strong> be extended.
+                </Alert>
+              </Grid>
+            )}
 
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 select
-                label="Payment Method"
+                label="Method"
                 value={formData.paymentMethod}
                 onChange={(e) =>
-                  setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethodString })
+                  setFormData({
+                    ...formData,
+                    paymentMethod: e.target.value as PaymentMethodString,
+                  })
                 }
               >
                 {Object.keys(PaymentMethodMap).map((method) => (
@@ -249,37 +337,8 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                required
-                type="date"
-                label="Coverage Start"
-                value={formData.periodStartDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, periodStartDate: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                required
-                type="date"
-                label="Coverage End"
-                value={formData.periodEndDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, periodEndDate: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-                helperText={selectedPackage ? `Auto-filled from ${selectedPackage.name}'s duration` : ''}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Transaction Reference"
-                placeholder="Receipt #, transfer ID, etc. (optional)"
+                label="Reference"
+                placeholder="Receipt #, transfer ID (optional)"
                 value={formData.transactionReference}
                 onChange={(e) =>
                   setFormData({ ...formData, transactionReference: e.target.value })
@@ -306,7 +365,7 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
             variant="contained"
             disabled={!isValid || createMutation.isPending}
           >
-            {createMutation.isPending ? 'Recording...' : 'Record Payment'}
+            {createMutation.isPending ? 'Saving...' : 'Take payment'}
           </Button>
         </DialogActions>
       </form>
@@ -314,7 +373,7 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
         open={showSuccess}
         autoHideDuration={3000}
         onClose={() => setShowSuccess(false)}
-        message="Payment recorded successfully!"
+        message="Payment saved"
       />
     </Dialog>
   );

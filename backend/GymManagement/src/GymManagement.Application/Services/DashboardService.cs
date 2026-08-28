@@ -1,6 +1,7 @@
 using GymManagement.Application.DTOs.Dashboard;
 using GymManagement.Domain.Enums;
 using GymManagement.Domain.Interfaces;
+using GymManagement.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymManagement.Application.Services;
@@ -17,15 +18,23 @@ public interface IDashboardService
 public class DashboardService : IDashboardService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IMembershipClock _clock;
 
-    public DashboardService(IUnitOfWork unitOfWork)
+    public DashboardService(IUnitOfWork unitOfWork, IMembershipClock clock)
     {
         _unitOfWork = unitOfWork;
+        _clock = clock;
     }
+
+    /// <summary>
+    /// Today in the gym's timezone. The owner reads this dashboard against the calendar on
+    /// the wall, so "today's takings" has to mean their today, not the server's.
+    /// </summary>
+    private DateTime GymToday => _clock.Today.ToDateTime(TimeOnly.MinValue);
 
     public async Task<DashboardStatsDto> GetStatsAsync(CancellationToken cancellationToken = default)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = GymToday;
         var firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
         var lastMonthStart = firstDayOfMonth.AddMonths(-1);
         var lastMonthEnd = firstDayOfMonth.AddDays(-1);
@@ -34,7 +43,7 @@ public class DashboardService : IDashboardService
 
         // Client stats
         stats.TotalActiveClients = await _unitOfWork.Clients.Query()
-            .CountAsync(c => c.MembershipStatus == MembershipStatus.Active, cancellationToken);
+            .CountAsync(c => MembershipStatuses.AllowedIn.Contains(c.MembershipStatus), cancellationToken);
 
         stats.TotalClients = await _unitOfWork.Clients.QueryIncludingDeleted()
             .CountAsync(cancellationToken);
@@ -43,7 +52,7 @@ public class DashboardService : IDashboardService
             .CountAsync(c => c.CreatedAt >= firstDayOfMonth, cancellationToken);
 
         stats.ExpiringMembershipsCount = await _unitOfWork.Clients.Query()
-            .CountAsync(c => c.MembershipEndDate >= today && c.MembershipEndDate <= today.AddDays(7) && c.MembershipStatus == MembershipStatus.Active, cancellationToken);
+            .CountAsync(c => c.MembershipEndDate >= today && c.MembershipEndDate <= today.AddDays(7) && MembershipStatuses.AllowedIn.Contains(c.MembershipStatus), cancellationToken);
 
         // Payment summary (active clients only)
         stats.PaymentSummary = new PaymentSummary
@@ -82,7 +91,7 @@ public class DashboardService : IDashboardService
     public async Task<RevenueChartDataDto> GetRevenueChartAsync(int months = 6, CancellationToken cancellationToken = default)
     {
         var result = new RevenueChartDataDto();
-        var today = DateTime.UtcNow.Date;
+        var today = GymToday;
         var startDate = new DateTime(today.Year, today.Month, 1).AddMonths(-(months - 1));
 
         var payments = await _unitOfWork.Payments.Query()
@@ -109,12 +118,12 @@ public class DashboardService : IDashboardService
 
     public async Task<List<ExpiringMembershipDto>> GetExpiringMembershipsAsync(int days = 7, CancellationToken cancellationToken = default)
     {
-        var today = DateTime.UtcNow.Date;
+        var today = GymToday;
         var endDate = today.AddDays(days);
 
         return await _unitOfWork.Clients.Query()
             .Include(c => c.CurrentPackage)
-            .Where(c => c.MembershipEndDate >= today && c.MembershipEndDate <= endDate && c.MembershipStatus == MembershipStatus.Active)
+            .Where(c => c.MembershipEndDate >= today && c.MembershipEndDate <= endDate && MembershipStatuses.AllowedIn.Contains(c.MembershipStatus))
             .OrderBy(c => c.MembershipEndDate)
             .Select(c => new ExpiringMembershipDto
             {

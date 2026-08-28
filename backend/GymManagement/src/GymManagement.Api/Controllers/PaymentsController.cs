@@ -72,20 +72,18 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
-    /// Refund a payment
+    /// Reverse a payment. Writes a second row cancelling the original and takes back the
+    /// days it bought; the original row is never edited. Returns the reversal row.
     /// </summary>
-    [HttpPost("{id}/refund")]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [HttpPost("{id}/reverse")]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RefundPayment(int id)
+    public async Task<IActionResult> ReversePayment(int id, [FromBody] ReversePaymentRequest? request)
     {
-        var result = await _paymentService.RefundPaymentAsync(id, _currentUserService.UserId);
+        var reversal = await _paymentService.ReversePaymentAsync(
+            id, request?.Reason, _currentUserService.UserId);
 
-        if (!result)
-        {
-            return NotFound(ApiResponse.FailResponse("Payment not found"));
-        }
-
-        return Ok(ApiResponse.SuccessResponse("Payment refunded successfully"));
+        return Ok(ApiResponse<PaymentDto>.SuccessResponse(reversal, "Payment reversed"));
     }
 }
