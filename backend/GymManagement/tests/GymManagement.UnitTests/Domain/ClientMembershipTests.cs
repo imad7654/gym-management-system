@@ -28,7 +28,7 @@ public class ClientMembershipTests
         var period = client.ExtendMembership(MonthlyPackage, Today);
 
         period.Start.Should().Be(Today);
-        period.End.Should().Be(Today.AddDays(30));
+        period.End.Should().Be(Today.AddDays(29), "30 days inclusive of the start day");
         client.MembershipStartDate.Should().Be(Today.ToDateTime(TimeOnly.MinValue));
         client.MembershipStatus.Should().Be(MembershipStatus.Active);
         client.PaymentStatus.Should().Be(PaymentStatus.Paid);
@@ -39,13 +39,13 @@ public class ClientMembershipTests
     {
         var client = NewClient();
         client.ExtendMembership(MonthlyPackage, Today);
-        var firstEnd = Today.AddDays(30);
+        var firstEnd = Today.AddDays(29);
 
         // Renews with 10 days still to run.
         var period = client.ExtendMembership(MonthlyPackage, Today.AddDays(20));
 
         period.Start.Should().Be(firstEnd.AddDays(1), "paid-for days must not be thrown away");
-        period.End.Should().Be(firstEnd.AddDays(31));
+        period.End.Should().Be(firstEnd.AddDays(30), "a renewal adds exactly one term");
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class ClientMembershipTests
         var period = client.ExtendMembership(MonthlyPackage, renewalDay);
 
         period.Start.Should().Be(renewalDay);
-        period.End.Should().Be(renewalDay.AddDays(30));
+        period.End.Should().Be(renewalDay.AddDays(29));
     }
 
     [Fact]
@@ -158,7 +158,8 @@ public class ClientMembershipTests
 
         client.WindBackMembership(MonthlyPackage.DurationDays, Today);
 
-        client.MembershipEndDate.Should().Be(Today.ToDateTime(TimeOnly.MinValue));
+        client.MembershipEndDate.Should().Be(Today.AddDays(-1).ToDateTime(TimeOnly.MinValue),
+            "one term added then one term removed must land exactly where it started");
     }
 
     [Fact]

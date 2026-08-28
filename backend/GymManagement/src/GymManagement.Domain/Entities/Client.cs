@@ -113,8 +113,11 @@ public class Client : AuditableEntity, ISoftDeletable
             ? currentEnd.Value.AddDays(1)
             : today;
 
-        // End date is inclusive, so a 30-day package bought today runs through today+30.
-        var end = start.AddDays(package.DurationDays);
+        // Both dates are inclusive, so the last day is start + duration - 1. Using
+        // start + duration would give a 30-day package 31 days of access, and - worse -
+        // would mean each payment adds duration + 1 days while WindBackMembership takes
+        // only duration back, so every reversal would leave a free day behind.
+        var end = start.AddDays(package.DurationDays - 1);
 
         CurrentPackageId = package.Id;
         MembershipStartDate ??= start.ToDateTime(TimeOnly.MinValue);
