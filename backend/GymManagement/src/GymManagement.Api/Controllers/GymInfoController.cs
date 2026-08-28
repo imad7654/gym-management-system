@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymManagement.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+// Explicit kebab-case route: [controller] would render as "GymInfo", which no client asks for.
+[Route("api/v1/gym-info")]
 public class GymInfoController : ControllerBase
 {
     private readonly IGymInfoService _gymInfoService;

@@ -220,30 +220,25 @@ public static class DataSeeder
             return;
         }
 
+        // This is what the public homepage shows until the owner edits it under
+        // Settings, so it is The Fit Bear Gym's own copy rather than generic filler.
+        // OperatingHours is deliberately plain text: nothing parses it, and the Settings
+        // screen edits it as free text.
         var gymInfo = new GymInfo
         {
-            GymName = "PowerFit Gym",
-            Description = "Your ultimate fitness destination. State-of-the-art equipment, expert trainers, and a motivating atmosphere to help you achieve your fitness goals.",
-            Address = "123 Fitness Street, Health City, HC 12345",
-            PhoneNumber = "+1 (555) 123-4567",
-            Email = "info@powerfitgym.com",
-            FacebookUrl = "https://facebook.com/powerfitgym",
-            InstagramUrl = "https://instagram.com/powerfitgym",
-            HeroTitle = "Transform Your Body, Transform Your Life",
-            HeroSubtitle = "Join our community of fitness enthusiasts and start your journey to a healthier, stronger you today!",
-            AboutTitle = "About PowerFit Gym",
-            AboutContent = "Founded in 2020, PowerFit Gym has been dedicated to helping our community achieve their fitness goals. Our facility features over 10,000 sq ft of workout space, including cardio zones, free weights, strength training equipment, and dedicated areas for group classes. Our certified trainers are committed to providing personalized guidance and support to members of all fitness levels.",
-            OperatingHours = @"{
-                ""monday"": ""5:00 AM - 11:00 PM"",
-                ""tuesday"": ""5:00 AM - 11:00 PM"",
-                ""wednesday"": ""5:00 AM - 11:00 PM"",
-                ""thursday"": ""5:00 AM - 11:00 PM"",
-                ""friday"": ""5:00 AM - 10:00 PM"",
-                ""saturday"": ""7:00 AM - 8:00 PM"",
-                ""sunday"": ""8:00 AM - 6:00 PM""
-            }",
-            MetaTitle = "PowerFit Gym - Your Ultimate Fitness Destination",
-            MetaDescription = "Join PowerFit Gym for state-of-the-art equipment, expert trainers, and a motivating atmosphere. Start your fitness journey today!"
+            GymName = "🐻 The Fit Bear Gym",
+            Description = "Where strength meets nature. Serious equipment, real coaching, and a room full of people who show up.",
+            Address = "Add your street address under Settings",
+            PhoneNumber = "+961 00 000 000",
+            Email = "hello@thefitbeargym.com",
+            InstagramUrl = "https://instagram.com/thefitbeargym",
+            HeroTitle = "Where Strength Meets Nature",
+            HeroSubtitle = "Train like a bear, dominate like a champion. Join our pack and unleash your primal strength!",
+            AboutTitle = "📍 Find Us & Join The Pack",
+            AboutContent = "The Fit Bear Gym - where bears train champions. Come in for a look around, meet the coaches, and we will find the membership that fits how you actually train.",
+            OperatingHours = "Mon-Fri: 6:00 AM - 10:00 PM\nSaturday: 8:00 AM - 8:00 PM\nSunday: 9:00 AM - 6:00 PM",
+            MetaTitle = "The Fit Bear Gym - Where Strength Meets Nature",
+            MetaDescription = "Serious equipment, real coaching, and a community that shows up. Join The Fit Bear Gym and start training today."
         };
 
         await context.GymInfos.AddAsync(gymInfo);

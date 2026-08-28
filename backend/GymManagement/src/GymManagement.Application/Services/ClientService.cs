@@ -134,7 +134,11 @@ public class ClientService : IClientService
             if (package != null)
             {
                 client.MembershipStartDate = request.MembershipStartDate.Value;
-                client.MembershipEndDate = request.MembershipStartDate.Value.AddDays(package.DurationDays);
+                // Both dates are inclusive, so the last day is start + duration - 1, the
+                // same rule Client.ExtendMembership applies to payments. Using
+                // start + duration here gave a member registered with a 30-day package
+                // 31 days, and disagreed with every renewal they went on to pay for.
+                client.MembershipEndDate = request.MembershipStartDate.Value.AddDays(package.DurationDays - 1);
                 client.UpdateMembershipStatus(_clock.Today);
             }
         }

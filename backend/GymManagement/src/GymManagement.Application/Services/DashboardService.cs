@@ -17,6 +17,13 @@ public interface IDashboardService
 
 public class DashboardService : IDashboardService
 {
+    /// <summary>
+    /// The dashboard's expiring list is a call sheet, not a report, so it is capped. The
+    /// UI compares this against the "Expiring Soon" count to say when it is showing a
+    /// subset; change one and the other stops making sense.
+    /// </summary>
+    private const int MaxExpiringMemberships = 10;
+
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMembershipClock _clock;
 
@@ -121,21 +128,37 @@ public class DashboardService : IDashboardService
         var today = GymToday;
         var endDate = today.AddDays(days);
 
-        return await _unitOfWork.Clients.Query()
+        // The day count is worked out after the rows come back, not in the projection:
+        // subtracting two dates inside the Select cannot be translated to SQL and threw
+        // at runtime ("No coercion operator ... DateTime and Nullable<TimeSpan>"), which
+        // made this endpoint a guaranteed 500.
+        var expiring = await _unitOfWork.Clients.Query()
             .Include(c => c.CurrentPackage)
             .Where(c => c.MembershipEndDate >= today && c.MembershipEndDate <= endDate && MembershipStatuses.AllowedIn.Contains(c.MembershipStatus))
             .OrderBy(c => c.MembershipEndDate)
+            .Take(MaxExpiringMemberships)
+            .Select(c => new
+            {
+                c.Id,
+                c.FirstName,
+                c.LastName,
+                c.PhoneNumber,
+                PackageName = c.CurrentPackage != null ? c.CurrentPackage.Name : "N/A",
+                ExpirationDate = c.MembershipEndDate!.Value
+            })
+            .ToListAsync(cancellationToken);
+
+        return expiring
             .Select(c => new ExpiringMembershipDto
             {
                 ClientId = c.Id,
                 ClientName = c.FirstName + " " + c.LastName,
                 PhoneNumber = c.PhoneNumber,
-                PackageName = c.CurrentPackage != null ? c.CurrentPackage.Name : "N/A",
-                ExpirationDate = c.MembershipEndDate!.Value,
-                DaysUntilExpiration = (c.MembershipEndDate!.Value - today).Days
+                PackageName = c.PackageName,
+                ExpirationDate = c.ExpirationDate,
+                DaysUntilExpiration = (c.ExpirationDate.Date - today.Date).Days
             })
-            .Take(10)
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<List<RecentPaymentDto>> GetRecentPaymentsAsync(int count = 5, CancellationToken cancellationToken = default)
