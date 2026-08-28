@@ -77,7 +77,7 @@ The API will start on:
 - Database tables are created
 - Initial data is seeded:
   - 4 roles (Admin, Client, Trainer, Staff)
-  - 1 admin user (admin@gym.com / Admin@123)
+  - 1 admin user, with a random password printed once in the console
   - 4 sample packages
   - Gym information
 
@@ -111,8 +111,9 @@ You should see:
 ### 2. Login as Admin
 1. Click "Admin Login" button
 2. Enter credentials:
-   - Email: `admin@gym.com`
-   - Password: `Admin@123`
+   - Email: the admin email (default `admin@gym.local` in development)
+   - Password: the one printed in the API console on first run — see
+     "Secrets and the admin account" in README.md
 3. You'll be redirected to `/admin/dashboard`
 
 ### 3. Explore Admin Features

@@ -330,16 +330,49 @@ Wait for: `Local: http://localhost:5173/`
 - Press `Ctrl + C` in each terminal
 - Or close the terminal windows
 
-## 🔐 Default Credentials
+## 🔐 Secrets and the admin account
 
-The system automatically seeds an admin account on first run:
+There are no default credentials, and no secrets in this repository. The API refuses
+to start if a required secret is missing, too short, or set to a value that was once
+committed here.
 
+### Local development
+
+Secrets live in `dotnet user-secrets`, which stores them outside the repository:
+
+```bash
+cd backend/GymManagement/src/GymManagement.Api
+dotnet user-secrets set "Jwt:SecretKey" "$(openssl rand -base64 48)"
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Port=3306;Database=gymdb;User=gymuser;Password=<your password>;"
 ```
-Email: admin@gym.com
-Password: Admin@123
+
+On first run an admin account is created and its randomly generated password is
+printed to the console **once**. Copy it then — it is not stored anywhere readable.
+If you miss it, delete the user row and restart to get a new one.
+
+To choose the credentials yourself instead:
+
+```bash
+dotnet user-secrets set "Seed:AdminEmail" "you@example.com"
+dotnet user-secrets set "Seed:AdminPassword" "<a long password>"
 ```
 
-⚠️ **IMPORTANT:** Change these credentials immediately in production environments!
+### Production
+
+Use environment variables, with `__` for the nesting:
+
+| Variable | Purpose |
+|---|---|
+| `Jwt__SecretKey` | Signs login tokens. At least 32 bytes of random data. |
+| `ConnectionStrings__DefaultConnection` | Database. Use an account that owns only `gymdb`, never `root`. |
+| `Seed__AdminEmail` | First administrator. Required outside development. |
+| `Seed__AdminPassword` | First administrator's password. Required outside development. |
+
+`Seed:DemoData` controls the sample packages and placeholder gym details. It is on in
+development and off everywhere else.
+
+⚠️ Editing a secret that was already committed does not remove it — the old value stays
+in git history. Always rotate to a genuinely new value rather than correcting the file.
 
 ## 🏗️ Architecture
 

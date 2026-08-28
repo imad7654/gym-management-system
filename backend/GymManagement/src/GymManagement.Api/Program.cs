@@ -6,6 +6,7 @@ using GymManagement.Infrastructure.Data.Seeders;
 using GymManagement.Api.Services;
 using GymManagement.Api.Middleware;
 using GymManagement.Api.Filters;
+using GymManagement.Api.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -72,8 +73,16 @@ builder.Services.AddApplication();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+// Refuse to start on a missing, weak or previously-committed secret. Runs before anything
+// that depends on those secrets, so the failure is a clear startup message rather than a
+// confusing error at first login.
+foreach (var warning in SecurityStartupChecks.Validate(builder.Configuration, builder.Environment))
+{
+    Log.Warning("Security: {Warning}", warning);
+}
+
 // JWT Authentication
-var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"]!;
 var key = Encoding.UTF8.GetBytes(jwtSecretKey);
 
 builder.Services.AddAuthentication(options =>

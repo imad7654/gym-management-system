@@ -1,7 +1,10 @@
+using System.Security.Cryptography;
 using GymManagement.Application.Interfaces;
 using GymManagement.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace GymManagement.Infrastructure.Data.Seeders;
@@ -13,7 +16,13 @@ public static class DataSeeder
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+
+        // Demo packages and marketing copy are useful while developing and are the last thing
+        // a real gym wants sitting in its database on opening day, so they are opt-in.
+        var seedDemoData = configuration.GetValue("Seed:DemoData", false);
 
         try
         {
@@ -22,9 +31,13 @@ public static class DataSeeder
             await SeedRolesAsync(context, logger);
             await context.SaveChangesAsync(); // Save roles first
 
-            await SeedAdminUserAsync(context, passwordHasher, logger);
-            await SeedPackagesAsync(context, logger);
-            await SeedGymInfoAsync(context, logger);
+            await SeedAdminUserAsync(context, passwordHasher, configuration, environment, logger);
+            await SeedGymInfoAsync(context, seedDemoData, logger);
+
+            if (seedDemoData)
+            {
+                await SeedDemoPackagesAsync(context, logger);
+            }
 
             await context.SaveChangesAsync();
             logger.LogInformation("Database seeding completed successfully");
@@ -52,9 +65,37 @@ public static class DataSeeder
         logger.LogInformation("Seeded {Count} roles", roles.Count);
     }
 
-    private static async Task SeedAdminUserAsync(ApplicationDbContext context, IPasswordHasher passwordHasher, ILogger logger)
+    /// <summary>
+    /// Creates the first administrator from configuration. There is deliberately no default
+    /// password: a known default on the one account that can read every member phone number
+    /// and address is a door left open, and defaults are exactly what nobody remembers to
+    /// change. When none is configured in development a random one is generated and printed
+    /// once.
+    /// </summary>
+    private static async Task SeedAdminUserAsync(
+        ApplicationDbContext context,
+        IPasswordHasher passwordHasher,
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        ILogger logger)
     {
-        if (await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == "admin@gym.com")) return;
+        var email = configuration["Seed:AdminEmail"];
+        var password = configuration["Seed:AdminPassword"];
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            if (!environment.IsDevelopment())
+            {
+                // Startup validation already refuses this case; guard anyway so the seeder
+                // can never invent an account on its own.
+                logger.LogError("Seed:AdminEmail is not configured. No administrator was created.");
+                return;
+            }
+
+            email = "admin@gym.local";
+        }
+
+        if (await context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email)) return;
 
         var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == Roles.Admin);
         if (adminRole == null)
@@ -63,31 +104,59 @@ public static class DataSeeder
             return;
         }
 
+        var generated = false;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            if (!environment.IsDevelopment())
+            {
+                logger.LogError("Seed:AdminPassword is not configured. No administrator was created.");
+                return;
+            }
+
+            password = GenerateStrongPassword();
+            generated = true;
+        }
+
         var adminUser = new User
         {
-            Email = "admin@gym.com",
-            PasswordHash = passwordHasher.HashPassword("Admin@123"),
+            Email = email,
+            PasswordHash = passwordHasher.HashPassword(password),
             FirstName = "System",
             LastName = "Administrator",
-            PhoneNumber = "+1234567890",
             IsActive = true
         };
 
         await context.Users.AddAsync(adminUser);
         await context.SaveChangesAsync();
 
-        var userRole = new UserRole
+        await context.UserRoles.AddAsync(new UserRole
         {
             UserId = adminUser.Id,
             RoleId = adminRole.Id,
             AssignedAt = DateTime.UtcNow
-        };
+        });
 
-        await context.UserRoles.AddAsync(userRole);
-        logger.LogInformation("Seeded admin user: admin@gym.com");
+        if (generated)
+        {
+            // Printed once, never stored anywhere readable. If it is missed, delete the user
+            // row and restart to get a new one.
+            logger.LogWarning(
+                "\n" +
+                "=====================================================================\n" +
+                " ADMIN ACCOUNT CREATED - this password is shown once and not saved\n" +
+                "   email:    {Email}\n" +
+                "   password: {Password}\n" +
+                " Copy it now, then change it after signing in.\n" +
+                "=====================================================================",
+                email, password);
+        }
+        else
+        {
+            logger.LogInformation("Seeded admin user: {Email}", email);
+        }
     }
 
-    private static async Task SeedPackagesAsync(ApplicationDbContext context, ILogger logger)
+    private static async Task SeedDemoPackagesAsync(ApplicationDbContext context, ILogger logger)
     {
         if (await context.Packages.IgnoreQueryFilters().AnyAsync()) return;
 
@@ -132,12 +201,24 @@ public static class DataSeeder
         };
 
         await context.Packages.AddRangeAsync(packages);
-        logger.LogInformation("Seeded {Count} packages", packages.Count);
+        logger.LogInformation("Seeded {Count} demo packages", packages.Count);
     }
 
-    private static async Task SeedGymInfoAsync(ApplicationDbContext context, ILogger logger)
+    /// <summary>
+    /// The homepage and the login screen both read this row, so one always has to exist.
+    /// Outside demo mode it is created empty for the owner to fill in rather than pre-filled
+    /// with another gym name and address.
+    /// </summary>
+    private static async Task SeedGymInfoAsync(ApplicationDbContext context, bool seedDemoData, ILogger logger)
     {
         if (await context.GymInfos.AnyAsync()) return;
+
+        if (!seedDemoData)
+        {
+            await context.GymInfos.AddAsync(new GymInfo { GymName = "My Gym" });
+            logger.LogInformation("Created empty gym information row");
+            return;
+        }
 
         var gymInfo = new GymInfo
         {
@@ -166,6 +247,20 @@ public static class DataSeeder
         };
 
         await context.GymInfos.AddAsync(gymInfo);
-        logger.LogInformation("Seeded gym information");
+        logger.LogInformation("Seeded demo gym information");
+    }
+
+    private static string GenerateStrongPassword()
+    {
+        // Excludes characters that are easy to misread when copied out of a console log.
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789-_@#";
+        var chars = new char[24];
+
+        for (var i = 0; i < chars.Length; i++)
+        {
+            chars[i] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+        }
+
+        return new string(chars);
     }
 }

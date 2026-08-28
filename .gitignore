@@ -23,3 +23,9 @@ logs/
 
 # Local Docker Compose overrides (machine-specific port/volume tweaks)
 docker/docker-compose.override.yml
+
+# Local/production config that may hold secrets. Secrets belong in
+# `dotnet user-secrets` (development) or environment variables (production),
+# never in a tracked file.
+**/appsettings.Local.json
+**/appsettings.Production.json

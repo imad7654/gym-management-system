@@ -196,7 +196,7 @@ npm run dev
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:5001
 - **Swagger**: http://localhost:5001/swagger
-- **Admin Login**: admin@gym.com / Admin@123
+- **Admin Login**: created on first run; the password is printed once in the API console (see README.md)
 
 ## 📚 Technologies Used
 
