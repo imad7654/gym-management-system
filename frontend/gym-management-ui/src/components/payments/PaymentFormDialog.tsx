@@ -324,11 +324,24 @@ export const PaymentFormDialog = ({
                   setFormData({ ...formData, packageId: Number(e.target.value) })
                 }
               >
-                {packages?.map((pkg) => (
-                  <MenuItem key={pkg.id} value={pkg.id}>
-                    {pkg.name} — ${pkg.price.toFixed(2)} · {pkg.durationDays} days
+                {/*
+                  Always renders at least one child. The packages query only starts when the
+                  dialog opens, so on the first open of a session this list is briefly
+                  undefined - and a MUI select with no children errors out, taking the
+                  package dropdown with it. Reception would hit that every time they took
+                  the first payment after opening the app.
+                */}
+                {packages?.length ? (
+                  packages.map((pkg) => (
+                    <MenuItem key={pkg.id} value={pkg.id}>
+                      {pkg.name} — ${pkg.price.toFixed(2)} · {pkg.durationDays} days
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem value="" disabled>
+                    Loading packages…
                   </MenuItem>
-                ))}
+                )}
               </TextField>
             </Grid>
 
