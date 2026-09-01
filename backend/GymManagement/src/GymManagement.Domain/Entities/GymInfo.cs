@@ -16,7 +16,11 @@ public class GymInfo : BaseEntity
     public string? InstagramUrl { get; set; }
     public string? TwitterUrl { get; set; }
 
-    // Operating Hours (stored as JSON)
+    /// <summary>
+    /// Free text - "Mon-Fri: 6am - 10pm" and so on. Not JSON, despite the column having
+    /// once been declared that way; nothing parses it and the Settings screen edits it as
+    /// an ordinary multi-line box.
+    /// </summary>
     public string? OperatingHours { get; set; }
 
     // Homepage Content

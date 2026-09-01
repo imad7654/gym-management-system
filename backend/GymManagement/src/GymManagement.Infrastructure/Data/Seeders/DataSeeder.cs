@@ -37,6 +37,13 @@ public static class DataSeeder
             if (seedDemoData)
             {
                 await SeedDemoPackagesAsync(context, logger);
+
+                // Saved before the members are seeded: they buy these packages, and the
+                // payment flow needs them to have ids already.
+                await context.SaveChangesAsync();
+
+                var clock = scope.ServiceProvider.GetRequiredService<IMembershipClock>();
+                await DemoGymSeeder.SeedAsync(context, clock, logger);
             }
 
             await context.SaveChangesAsync();
