@@ -567,3 +567,39 @@ export interface MemberPayment {
   periodEndDate?: string | null;
   notes?: string | null;
 }
+
+// User account types
+// The people who sign in and run the gym. Members are not here - they get their own
+// accounts separately, matched to a record the owner already created.
+export interface UserAccount {
+  id: number;
+  fullName: string;
+  email: string;
+  phoneNumber?: string | null;
+  roles: string[];
+  isActive: boolean;
+  createdAt: string;
+  /** True for the person reading the list, so the screen can stop them locking themselves out. */
+  isYou: boolean;
+  /** True when this is the only administrator who can still sign in. */
+  isLastAdmin: boolean;
+}
+
+export interface CreateUserRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string | null;
+  password: string;
+}
+
+export interface UpdateUserRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber?: string | null;
+}
+
+export interface ResetUserPasswordRequest {
+  newPassword: string;
+}

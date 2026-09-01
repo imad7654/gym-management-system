@@ -162,6 +162,28 @@ public class AuthService : IAuthService
         }
 
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+
+        // Every session is signed out, this one included, so the person signs in again with
+        // the password they just chose.
+        //
+        // Without this a changed password locked nobody out: an existing refresh token kept
+        // minting access tokens until it expired, so whoever had the old password - the
+        // usual reason for changing it - would have kept their access anyway.
+        //
+        // Keeping the current session alive would need the browser to send its refresh
+        // token up so it could be spared. One extra sign-in after a deliberate action is a
+        // smaller cost than that plumbing, and it fails safe.
+        var now = DateTime.UtcNow;
+
+        var sessions = await _unitOfWork.RefreshTokens.Query()
+            .Where(t => t.UserId == userId && t.RevokedAt == null && t.ExpiresAt > now)
+            .ToListAsync(cancellationToken);
+
+        foreach (var token in sessions)
+        {
+            token.RevokedAt = now;
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }

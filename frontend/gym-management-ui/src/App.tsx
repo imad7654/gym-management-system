@@ -22,6 +22,7 @@ import { SettingsPage } from '@pages/settings';
 import { ChangePasswordPage } from '@pages/account';
 import { ImportMembersPage } from '@pages/import';
 import { AuditTrailPage, DailyTakingsPage, WhoOwesMoneyPage } from '@pages/reports';
+import { UsersPage } from '@pages/users';
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
   <Route path="reports/daily-takings" element={<DailyTakingsPage />} />
   <Route path="reports/history" element={<AuditTrailPage />} />
   <Route path="packages" element={<PackagesPage />} />
+  <Route path="users" element={<UsersPage />} />
   <Route path="settings" element={<SettingsPage />} />
   <Route path="change-password" element={<ChangePasswordPage />} />
   <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
