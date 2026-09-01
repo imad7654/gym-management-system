@@ -94,8 +94,15 @@ public class PaymentService : IPaymentService
             .Select(p => new PaymentListDto
             {
                 Id = p.Id,
-                ClientName = p.Client.FirstName + " " + p.Client.LastName,
-                PackageName = p.Package.Name,
+
+                // A soft-deleted member or package is filtered out of the Include, so these
+                // navigations come back null and the row rendered as a blank name with no
+                // hint that a real payment was sitting behind it. The takings report has
+                // always named them; this list now does too.
+                ClientName = p.Client != null
+                    ? p.Client.FirstName + " " + p.Client.LastName
+                    : "(removed member)",
+                PackageName = p.Package != null ? p.Package.Name : "(deleted package)",
                 Amount = p.Amount,
                 AmountReceived = p.AmountReceived,
                 Currency = p.Currency.ToString(),
@@ -340,7 +347,7 @@ public class PaymentService : IPaymentService
 
         if (extendedMembership)
         {
-            client.WindBackMembership(original.Package.DurationDays, _clock.Today);
+            client.WindBackMembership(original.Package.DurationDays);
 
             // Any part payments this one finished off go back to being money the member has
             // put down and not yet used. Leaving them settled would quietly swallow cash the
@@ -370,7 +377,7 @@ public class PaymentService : IPaymentService
 
         client.PaymentStatus = stillOwed > 0
             ? PaymentStatus.Partial
-            : MembershipStatuses.AllowedIn.Contains(client.MembershipStatus)
+            : MembershipStatuses.AllowsEntry(client.MembershipStatusOn(_clock.Today))
                 ? PaymentStatus.Paid
                 : PaymentStatus.Pending;
 

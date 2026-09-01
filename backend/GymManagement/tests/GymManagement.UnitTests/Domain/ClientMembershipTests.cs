@@ -30,7 +30,7 @@ public class ClientMembershipTests
         period.Start.Should().Be(Today);
         period.End.Should().Be(Today.AddDays(29), "30 days inclusive of the start day");
         client.MembershipStartDate.Should().Be(Today.ToDateTime(TimeOnly.MinValue));
-        client.MembershipStatus.Should().Be(MembershipStatus.Active);
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Active);
         client.PaymentStatus.Should().Be(PaymentStatus.Paid);
     }
 
@@ -75,16 +75,14 @@ public class ClientMembershipTests
             "the gym would otherwise lose the record of when each member actually joined");
     }
 
-    // ---- UpdateMembershipStatus ----
+    // ---- Status derived from the dates ----
 
     [Fact]
-    public void UpdateMembershipStatus_NeverPaid_IsPending()
+    public void Status_WhenNeverPaid_IsPending()
     {
         var client = NewClient();
 
-        client.UpdateMembershipStatus(Today);
-
-        client.MembershipStatus.Should().Be(MembershipStatus.Pending);
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Pending);
     }
 
     [Theory]
@@ -94,58 +92,106 @@ public class ClientMembershipTests
     [InlineData(1, MembershipStatus.Expiring)]
     [InlineData(0, MembershipStatus.Expiring)]
     [InlineData(-1, MembershipStatus.Expired)]
-    public void UpdateMembershipStatus_FollowsTheEndDate(int daysRemaining, MembershipStatus expected)
+    public void Status_FollowsTheEndDate(int daysRemaining, MembershipStatus expected)
     {
         var client = NewClient();
         client.MembershipStartDate = Today.AddDays(-60).ToDateTime(TimeOnly.MinValue);
         client.MembershipEndDate = Today.AddDays(daysRemaining).ToDateTime(TimeOnly.MinValue);
 
-        client.UpdateMembershipStatus(Today);
-
-        client.MembershipStatus.Should().Be(expected);
+        client.MembershipStatusOn(Today).Should().Be(expected);
     }
 
+    /// <summary>
+    /// The bug this whole design exists to prevent. The status used to be a stored column
+    /// refreshed by a nightly job that was never written, so a membership that ran out
+    /// went on reading Active indefinitely - the door would have let them in.
+    /// </summary>
     [Fact]
-    public void UpdateMembershipStatus_LeavesSuspendedAlone()
+    public void Status_GoesStaleForNobody_EvenIfNothingEverTouchesTheRecord()
     {
         var client = NewClient();
         client.ExtendMembership(MonthlyPackage, Today);
-        client.MembershipStatus = MembershipStatus.Suspended;
 
-        // The nightly job runs long after the membership would otherwise have expired.
-        client.UpdateMembershipStatus(Today.AddDays(365));
-
-        client.MembershipStatus.Should().Be(MembershipStatus.Suspended,
-            "a freeze is set by a person and the nightly recalculation must not undo it");
+        // Nothing is called in between. No job, no edit, no save.
+        client.MembershipStatusOn(Today.AddDays(400)).Should().Be(MembershipStatus.Expired,
+            "a membership that ran out months ago cannot still read as current");
     }
 
     [Fact]
-    public void UpdateMembershipStatus_OnTheLastDay_StillAllowsEntry()
+    public void Status_WhenStartDateIsInTheFuture_IsPending()
+    {
+        var client = NewClient();
+        client.MembershipStartDate = Today.AddDays(5).ToDateTime(TimeOnly.MinValue);
+        client.MembershipEndDate = Today.AddDays(35).ToDateTime(TimeOnly.MinValue);
+
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Pending,
+            "a membership dated to start later does not let anyone in yet");
+    }
+
+    [Fact]
+    public void Status_WhenSuspended_BeatsTheDates()
+    {
+        var client = NewClient();
+        client.ExtendMembership(MonthlyPackage, Today);
+
+        client.Suspend();
+
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Suspended,
+            "a freeze is set by a person and the dates must not override it");
+    }
+
+    [Fact]
+    public void Resume_PutsTheMemberStraightBackOnTheirDates()
+    {
+        var client = NewClient();
+        client.ExtendMembership(MonthlyPackage, Today);
+        client.Suspend();
+
+        client.Resume();
+
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Active,
+            "lifting a freeze needs no recalculation - the dates were never changed");
+    }
+
+    [Fact]
+    public void Status_OnTheLastDay_StillAllowsEntry()
     {
         var client = NewClient();
         client.ExtendMembership(MonthlyPackage, Today);
         var lastDay = DateOnly.FromDateTime(client.MembershipEndDate!.Value);
 
-        client.UpdateMembershipStatus(lastDay);
-
-        MembershipStatuses.AllowedIn.Should().Contain(client.MembershipStatus,
+        MembershipStatuses.AllowedIn.Should().Contain(client.MembershipStatusOn(lastDay),
             "the end date is inclusive - a member is entitled to train on the day it ends");
+    }
+
+    [Fact]
+    public void ExtendMembership_LiftsAFreeze()
+    {
+        var client = NewClient();
+        client.ExtendMembership(MonthlyPackage, Today);
+        client.Suspend();
+
+        client.ExtendMembership(MonthlyPackage, Today.AddDays(10));
+
+        client.IsSuspended.Should().BeFalse(
+            "someone who paused for travel and has now renewed at the desk is back, "
+            + "and leaving them frozen would turn them away at the door");
     }
 
     // ---- Soft delete and restore ----
 
     [Fact]
-    public void SoftDeleteThenRestore_RecalculatesStatus()
+    public void SoftDeleteThenRestore_LeavesTheMembershipIntact()
     {
         var client = NewClient();
         client.ExtendMembership(MonthlyPackage, Today);
 
         client.SoftDelete();
-        client.Restore(Today);
+        client.Restore();
 
         client.IsActive.Should().BeTrue();
-        client.MembershipStatus.Should().Be(MembershipStatus.Active,
-            "deleting marked the client Suspended, which Restore could then never undo");
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Active,
+            "removal and freezing are different things; deleting must not strand the member");
     }
 
     // ---- WindBackMembership ----
@@ -156,7 +202,7 @@ public class ClientMembershipTests
         var client = NewClient();
         client.ExtendMembership(MonthlyPackage, Today);
 
-        client.WindBackMembership(MonthlyPackage.DurationDays, Today);
+        client.WindBackMembership(MonthlyPackage.DurationDays);
 
         client.MembershipEndDate.Should().Be(Today.AddDays(-1).ToDateTime(TimeOnly.MinValue),
             "one term added then one term removed must land exactly where it started");
@@ -170,7 +216,7 @@ public class ClientMembershipTests
         client.ExtendMembership(MonthlyPackage, Today.AddDays(10));
         var endAfterTwoTerms = client.MembershipEndDate;
 
-        client.WindBackMembership(MonthlyPackage.DurationDays, Today);
+        client.WindBackMembership(MonthlyPackage.DurationDays);
 
         client.MembershipEndDate.Should().Be(endAfterTwoTerms!.Value.AddDays(-30),
             "reversing one payment must not delete days a different payment paid for");
@@ -183,8 +229,20 @@ public class ClientMembershipTests
         client.ExtendMembership(MonthlyPackage, Today);
         var joinDate = client.MembershipStartDate;
 
-        client.WindBackMembership(MonthlyPackage.DurationDays, Today);
+        client.WindBackMembership(MonthlyPackage.DurationDays);
 
         client.MembershipStartDate.Should().Be(joinDate, "reversing a renewal does not unjoin anyone");
+    }
+
+    [Fact]
+    public void WindBackMembership_LeavesAFrozenMemberFrozen()
+    {
+        var client = NewClient();
+        client.ExtendMembership(MonthlyPackage, Today);
+        client.Suspend();
+
+        client.WindBackMembership(MonthlyPackage.DurationDays);
+
+        client.IsSuspended.Should().BeTrue("a reversal is not a reason to unfreeze anyone");
     }
 }

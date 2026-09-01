@@ -69,7 +69,7 @@ public class PartialPaymentTopUpTests : IDisposable
         var client = _context.Clients.Single();
         client.PaymentStatus.Should().Be(PaymentStatus.Paid);
         client.MembershipEndDate.Should().Be(Today.AddDays(29).ToDateTime(TimeOnly.MinValue));
-        client.MembershipStatus.Should().Be(MembershipStatus.Active);
+        client.MembershipStatusOn(Today).Should().Be(MembershipStatus.Active);
     }
 
     [Fact]

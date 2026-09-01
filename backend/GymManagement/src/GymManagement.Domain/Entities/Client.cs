@@ -38,7 +38,13 @@ public class Client : AuditableEntity, ISoftDeletable
     /// </summary>
     public DateTime? MembershipEndDate { get; set; }
 
-    public MembershipStatus MembershipStatus { get; set; } = MembershipStatus.Pending;
+    /// <summary>
+    /// Paused by the owner for travel or injury. The only part of the membership status a
+    /// person sets by hand, and therefore the only part worth storing - every other value
+    /// is worked out from <see cref="MembershipEndDate"/> whenever it is asked for.
+    /// </summary>
+    public bool IsSuspended { get; set; }
+
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 
     // Soft Delete
@@ -59,41 +65,53 @@ public class Client : AuditableEntity, ISoftDeletable
             : null;
 
     /// <summary>
-    /// Recalculates the status from the end date. Takes today as an argument rather than
-    /// reading the clock itself, so the caller decides which calendar "today" means - the
-    /// gym's, not the server's - and so this is testable without freezing time.
+    /// The member's status on a given day, worked out from the end date every time it is
+    /// asked for.
+    ///
+    /// This used to be a stored column kept up to date by a nightly job. The job was never
+    /// written, so an expired member went on reading Active indefinitely - the door would
+    /// have let them in and every count of "active members" was wrong. Deriving it removes
+    /// the possibility entirely: there is no copy left to go stale.
+    ///
+    /// Takes today as an argument rather than reading the clock, so the caller decides
+    /// which calendar "today" means - the gym's, not the server's - and so this is
+    /// testable without freezing time.
     /// </summary>
-    public void UpdateMembershipStatus(DateOnly today)
+    public MembershipStatus MembershipStatusOn(DateOnly today) =>
+        StatusFrom(IsSuspended, MembershipStartDate, MembershipEndDate, today);
+
+    /// <summary>
+    /// The single definition of the status rule, shared by the entity and by
+    /// <c>ClientQueries</c>, which rewrites the same logic as SQL so the database can
+    /// filter and sort on it. Any change here has to be mirrored there.
+    /// </summary>
+    public static MembershipStatus StatusFrom(
+        bool isSuspended, DateTime? startDate, DateTime? endDate, DateOnly today)
     {
-        // A freeze is the one status a person sets deliberately. The nightly recalculation
-        // has to leave it alone, or a frozen member silently becomes Active or Expired.
-        if (MembershipStatus == MembershipStatus.Suspended) return;
+        // A freeze is the one thing a person sets deliberately, so it wins over the dates.
+        if (isSuspended) return MembershipStatus.Suspended;
 
-        if (!MembershipStartDate.HasValue || !MembershipEndDate.HasValue)
-        {
-            MembershipStatus = MembershipStatus.Pending;
-            return;
-        }
+        if (!startDate.HasValue || !endDate.HasValue) return MembershipStatus.Pending;
 
-        var start = DateOnly.FromDateTime(MembershipStartDate.Value);
-        var end = DateOnly.FromDateTime(MembershipEndDate.Value);
+        var start = DateOnly.FromDateTime(startDate.Value);
+        var end = DateOnly.FromDateTime(endDate.Value);
 
-        if (today < start)
-        {
-            MembershipStatus = MembershipStatus.Pending;
-        }
-        else if (today > end)
-        {
-            MembershipStatus = MembershipStatus.Expired;
-        }
-        else
-        {
-            var daysLeft = end.DayNumber - today.DayNumber;
-            MembershipStatus = daysLeft <= ExpiringWindowDays
-                ? MembershipStatus.Expiring
-                : MembershipStatus.Active;
-        }
+        if (today < start) return MembershipStatus.Pending;
+        if (today > end) return MembershipStatus.Expired;
+
+        return end.DayNumber - today.DayNumber <= ExpiringWindowDays
+            ? MembershipStatus.Expiring
+            : MembershipStatus.Active;
     }
+
+    /// <summary>Pauses the membership for travel or injury. The dates are left untouched.</summary>
+    public void Suspend() => IsSuspended = true;
+
+    /// <summary>
+    /// Lifts a pause. The status goes straight back to whatever the dates say, with no
+    /// recalculation step needed - which is the point of deriving it.
+    /// </summary>
+    public void Resume() => IsSuspended = false;
 
     /// <summary>
     /// Moves the membership forward by one package duration and returns the period bought.
@@ -123,8 +141,12 @@ public class Client : AuditableEntity, ISoftDeletable
         MembershipStartDate ??= start.ToDateTime(TimeOnly.MinValue);
         MembershipEndDate = end.ToDateTime(TimeOnly.MinValue);
         PaymentStatus = PaymentStatus.Paid;
-        MembershipStatus = MembershipStatus.Active;
-        UpdateMembershipStatus(today);
+
+        // Paying lifts a freeze. Someone who paused for travel and has now renewed at the
+        // desk is back, and leaving them frozen would turn them away at the door. This
+        // matches what the old stored-status code did, which set Active before
+        // recalculating and so cleared a suspension as a side effect.
+        IsSuspended = false;
 
         return new MembershipPeriod(start, end);
     }
@@ -136,22 +158,19 @@ public class Client : AuditableEntity, ISoftDeletable
     /// because the member may have renewed again since. Chopping back to that older date
     /// would silently delete the days a later, unrelated payment paid for.
     ///
-    /// The join date is left alone: reversing a renewal does not unjoin anyone.
+    /// The join date is left alone: reversing a renewal does not unjoin anyone. So is the
+    /// freeze - a reversal leaves a frozen member frozen.
+    ///
+    /// There is no status to put right afterwards any more. Moving the end date is the
+    /// whole operation, and the status follows from it the next time anything asks.
     /// </summary>
-    public void WindBackMembership(int days, DateOnly today)
+    public void WindBackMembership(int days)
     {
         if (!MembershipEndDate.HasValue) return;
 
         MembershipEndDate = DateOnly.FromDateTime(MembershipEndDate.Value)
             .AddDays(-days)
             .ToDateTime(TimeOnly.MinValue);
-
-        // Suspended would otherwise block the recalculation, and a reversal should leave a
-        // frozen member frozen.
-        if (MembershipStatus != MembershipStatus.Suspended)
-        {
-            UpdateMembershipStatus(today);
-        }
     }
 
     public void SoftDelete()
@@ -159,16 +178,14 @@ public class Client : AuditableEntity, ISoftDeletable
         IsActive = false;
         DeletedAt = DateTime.UtcNow;
 
-        // Deliberately does not touch MembershipStatus. Removal and freezing are different
-        // things: marking a deleted client Suspended made Restore() unable to recalculate
-        // their status, because Suspended is skipped by design.
+        // Deliberately does not freeze the member. Removal and freezing are different
+        // things, and conflating them used to leave a restored client stuck as Suspended.
     }
 
-    public void Restore(DateOnly today)
+    public void Restore()
     {
         IsActive = true;
         DeletedAt = null;
-        UpdateMembershipStatus(today);
     }
 }
 

@@ -154,9 +154,83 @@ public class ClientsController : ControllerBase
     /// </summary>
     [HttpGet("expiring")]
     [ProducesResponseType(typeof(ApiResponse<List<ClientListDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetExpiringClients([FromQuery] int days = 7)
+    public async Task<IActionResult> GetExpiringClients(
+        [FromQuery] int days = GymManagement.Domain.Entities.Client.ExpiringWindowDays)
     {
         var clients = await _clientService.GetExpiringClientsAsync(days);
         return Ok(ApiResponse<List<ClientListDto>>.SuccessResponse(clients));
+    }
+
+    /// <summary>
+    /// Everything the member page shows - details, status, what they owe, and their payment
+    /// history - in one request.
+    /// </summary>
+    [HttpGet("{id}/summary")]
+    [ProducesResponseType(typeof(ApiResponse<MemberSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMemberSummary(int id)
+    {
+        var summary = await _clientService.GetMemberSummaryAsync(id);
+
+        if (summary == null)
+        {
+            return NotFound(ApiResponse.FailResponse("Client not found"));
+        }
+
+        return Ok(ApiResponse<MemberSummaryDto>.SuccessResponse(summary));
+    }
+
+    /// <summary>
+    /// Money this member has put toward packages they have not finished paying for.
+    ///
+    /// Used by the payment desk to credit a new payment against what is already down, so
+    /// reception is told the payment completes the package rather than warned that it falls
+    /// short of the full price.
+    /// </summary>
+    [HttpGet("{id}/outstanding")]
+    [ProducesResponseType(typeof(ApiResponse<List<OutstandingPackageDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOutstanding(int id)
+    {
+        var outstanding = await _clientService.GetOutstandingAsync(id);
+        return Ok(ApiResponse<List<OutstandingPackageDto>>.SuccessResponse(outstanding));
+    }
+
+    /// <summary>
+    /// Freezes a membership for travel or injury. The dates are left untouched - a freeze
+    /// stops them being let in, it does not give days back.
+    /// </summary>
+    [HttpPost("{id}/suspend")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SuspendClient(int id, [FromBody] SuspendClientRequest? request)
+    {
+        var result = await _clientService.SetSuspendedAsync(
+            id, suspended: true, request?.Reason, _currentUserService.UserId);
+
+        if (!result)
+        {
+            return NotFound(ApiResponse.FailResponse("Client not found"));
+        }
+
+        return Ok(ApiResponse.SuccessResponse("Membership frozen"));
+    }
+
+    /// <summary>
+    /// Lifts a freeze. The membership goes straight back to whatever its dates say.
+    /// </summary>
+    [HttpPost("{id}/resume")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResumeClient(int id)
+    {
+        var result = await _clientService.SetSuspendedAsync(
+            id, suspended: false, null, _currentUserService.UserId);
+
+        if (!result)
+        {
+            return NotFound(ApiResponse.FailResponse("Client not found"));
+        }
+
+        return Ok(ApiResponse.SuccessResponse("Membership unfrozen"));
     }
 }

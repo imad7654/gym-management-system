@@ -48,10 +48,6 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.Property(c => c.Notes)
             .HasColumnType("text");
 
-        builder.Property(c => c.MembershipStatus)
-            .HasConversion<string>()
-            .HasMaxLength(20);
-
         builder.Property(c => c.PaymentStatus)
             .HasConversion<string>()
             .HasMaxLength(20);
@@ -60,10 +56,14 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
             .HasConversion<string>()
             .HasMaxLength(10);
 
-        builder.HasIndex(c => c.MembershipStatus);
         builder.HasIndex(c => c.PaymentStatus);
         builder.HasIndex(c => c.IsActive);
+
+        // Every membership status question is now a question about these two columns, so
+        // this is the index that matters. The old index on the stored status column went
+        // with the column.
         builder.HasIndex(c => c.MembershipEndDate);
+        builder.HasIndex(c => c.IsSuspended);
 
         builder.HasOne(c => c.CurrentPackage)
             .WithMany(p => p.Clients)

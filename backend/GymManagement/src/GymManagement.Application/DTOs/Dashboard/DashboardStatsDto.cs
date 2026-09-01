@@ -15,7 +15,15 @@ public class PaymentSummary
 {
     public int PaidCount { get; set; }
     public int PendingCount { get; set; }
-    public int OverdueCount { get; set; }
+    /// <summary>
+    /// Members who handed over part of a package price and still owe the rest.
+    ///
+    /// This replaced an Overdue count that nothing in the system could ever set - no code
+    /// path assigned it and no screen exposed the field, so it read zero forever while
+    /// Partial members were counted in none of the three figures. The counts now add up to
+    /// the member list.
+    /// </summary>
+    public int OwesMoneyCount { get; set; }
 }
 
 public class RevenueSummary
@@ -26,18 +34,6 @@ public class RevenueSummary
     public decimal TotalRevenue { get; set; }
 }
 
-public class RevenueChartDataDto
-{
-    public List<RevenueDataPoint> Data { get; set; } = new();
-}
-
-public class RevenueDataPoint
-{
-    public string Label { get; set; } = string.Empty;
-    public decimal Revenue { get; set; }
-    public int TransactionCount { get; set; }
-}
-
 public class ExpiringMembershipDto
 {
     public int ClientId { get; set; }
@@ -46,22 +42,4 @@ public class ExpiringMembershipDto
     public string PackageName { get; set; } = string.Empty;
     public DateTime ExpirationDate { get; set; }
     public int DaysUntilExpiration { get; set; }
-}
-
-public class RecentPaymentDto
-{
-    public int Id { get; set; }
-    public string ClientName { get; set; } = string.Empty;
-    public decimal Amount { get; set; }
-    public DateTime PaymentDate { get; set; }
-    public string PaymentMethod { get; set; } = string.Empty;
-}
-
-public class RecentClientDto
-{
-    public int Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string PhoneNumber { get; set; } = string.Empty;
-    public string? PackageName { get; set; }
-    public DateTime CreatedAt { get; set; }
 }

@@ -69,7 +69,7 @@ public class ReportService : IReportService
                     AmountOwed = price - paid,
                     OwingSince = first.PaymentDate,
                     DaysOutstanding = today.DayNumber - DateOnly.FromDateTime(first.PaymentDate).DayNumber,
-                    MembershipStatus = first.Client.MembershipStatus.ToString()
+                    MembershipStatus = first.Client.MembershipStatusOn(today).ToString()
                 };
             })
             // Only real debts. A group can net to zero or below when a part payment was

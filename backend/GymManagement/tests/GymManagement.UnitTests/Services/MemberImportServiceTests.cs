@@ -389,7 +389,7 @@ public class MemberImportServiceTests : IDisposable
         client.PhoneNumber.Should().Be("03 123 456", "the number is stored exactly as the owner wrote it");
         client.CurrentPackageId.Should().Be(1);
         client.MembershipEndDate.Should().Be(new DateTime(2026, 12, 31));
-        client.MembershipStatus.Should().Be(MembershipStatus.Active);
+        client.MembershipStatusOn(new DateOnly(2026, 8, 28)).Should().Be(MembershipStatus.Active);
         client.CreatedBy.Should().Be(7, "with no payment behind them, this is the only record of where they came from");
     }
 

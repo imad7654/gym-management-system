@@ -452,8 +452,9 @@ public class MemberImportService : IMemberImportService
             PaymentStatus = PaymentStatus.Paid
         };
 
-        client.UpdateMembershipStatus(today);
-        row.MembershipStatus = client.MembershipStatus.ToString();
+        // Shown on the preview so the owner can see what each imported row will become
+        // before committing. Nothing is stored - the status is derived from the dates.
+        row.MembershipStatus = client.MembershipStatusOn(today).ToString();
 
         return new PlannedRow(row, client);
     }

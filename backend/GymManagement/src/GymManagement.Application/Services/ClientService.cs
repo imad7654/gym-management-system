@@ -1,3 +1,4 @@
+using GymManagement.Domain.Common;
 using GymManagement.Application.DTOs.Client;
 using GymManagement.Application.DTOs.Common;
 using GymManagement.Application.Interfaces;
@@ -16,7 +17,16 @@ public interface IClientService
     Task<ClientDto?> UpdateClientAsync(int id, UpdateClientRequest request, int? userId = null, CancellationToken cancellationToken = default);
     Task<bool> DeleteClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default);
     Task<bool> RestoreClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default);
-    Task<List<ClientListDto>> GetExpiringClientsAsync(int days = 7, CancellationToken cancellationToken = default);
+    Task<List<ClientListDto>> GetExpiringClientsAsync(int days = Client.ExpiringWindowDays, CancellationToken cancellationToken = default);
+
+    /// <summary>Everything the member page shows, in one call.</summary>
+    Task<MemberSummaryDto?> GetMemberSummaryAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>Money put toward packages this member has not finished paying for.</summary>
+    Task<List<OutstandingPackageDto>> GetOutstandingAsync(int clientId, CancellationToken cancellationToken = default);
+
+    /// <summary>Freezes or unfreezes a membership. Returns false if the member does not exist.</summary>
+    Task<bool> SetSuspendedAsync(int id, bool suspended, string? reason = null, int? userId = null, CancellationToken cancellationToken = default);
 }
 
 public class ClientService : IClientService
@@ -44,17 +54,36 @@ public class ClientService : IClientService
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {
             var searchLower = parameters.Search.ToLower();
+
+            // Phone numbers are written four ways in the gym's own records - "03 123 456",
+            // "03123456", "+961 3 123 456". Comparing the raw text meant typing a number
+            // with spaces found nobody. PhoneNumberKey is the rule for this everywhere else,
+            // but it is C# and cannot run in the database, so the separators the gym
+            // actually uses are stripped from both sides in SQL instead.
+            //
+            // This is a narrower rule than PhoneNumberKey - it does not strip the 961
+            // country code - so a search is a search, not the duplicate-detection match.
+            var digits = new string(parameters.Search.Where(char.IsDigit).ToArray());
+            var searchByPhone = digits.Length >= 3;
+
             query = query.Where(c =>
                 c.FirstName.ToLower().Contains(searchLower) ||
                 c.LastName.ToLower().Contains(searchLower) ||
-                c.PhoneNumber.Contains(searchLower) ||
-                (c.Email != null && c.Email.ToLower().Contains(searchLower)));
+                (c.FirstName + " " + c.LastName).ToLower().Contains(searchLower) ||
+                (c.Email != null && c.Email.ToLower().Contains(searchLower)) ||
+                (searchByPhone && c.PhoneNumber
+                    .Replace(" ", "").Replace("-", "").Replace("(", "")
+                    .Replace(")", "").Replace("+", "").Replace(".", "")
+                    .Contains(digits)));
         }
 
-        // Filter by status
+        var today = _clock.Today;
+
+        // Filter by status. There is no status column any more, so this asks the dates the
+        // same question Client.StatusFrom asks in memory.
         if (parameters.MembershipStatus.HasValue)
         {
-            query = query.Where(c => c.MembershipStatus == parameters.MembershipStatus.Value);
+            query = query.WithStatus(parameters.MembershipStatus.Value, today);
         }
 
         if (parameters.PaymentStatus.HasValue)
@@ -72,8 +101,8 @@ public class ClientService : IClientService
                 ? query.OrderByDescending(c => c.MembershipEndDate)
                 : query.OrderBy(c => c.MembershipEndDate),
             "membershipstatus" => parameters.SortDescending
-                ? query.OrderByDescending(c => c.MembershipStatus)
-                : query.OrderBy(c => c.MembershipStatus),
+                ? query.OrderByDescending(ClientQueries.StatusRank(today))
+                : query.OrderBy(ClientQueries.StatusRank(today)),
             _ => parameters.SortDescending
                 ? query.OrderByDescending(c => c.CreatedAt)
                 : query.OrderBy(c => c.CreatedAt)
@@ -81,22 +110,26 @@ public class ClientService : IClientService
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var clients = await query
+        // The status is worked out after the rows come back rather than in the projection.
+        // Client.StatusFrom is ordinary C# and cannot be translated to SQL, and rewriting
+        // it as a CASE here would be a second copy of the rule to keep in step.
+        var clients = (await query
             .Skip((parameters.Page - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
-            .Select(c => new ClientListDto
-            {
-                Id = c.Id,
-                FullName = c.FirstName + " " + c.LastName,
-                PhoneNumber = c.PhoneNumber,
-                Email = c.Email,
-                CurrentPackageName = c.CurrentPackage != null ? c.CurrentPackage.Name : null,
-                MembershipEndDate = c.MembershipEndDate,
-                MembershipStatus = c.MembershipStatus.ToString(),
-                PaymentStatus = c.PaymentStatus.ToString(),
-                IsActive = c.IsActive
-            })
-            .ToListAsync(cancellationToken);
+            .Select(c => new ClientListRow(
+                c.Id,
+                c.FirstName + " " + c.LastName,
+                c.PhoneNumber,
+                c.Email,
+                c.CurrentPackage != null ? c.CurrentPackage.Name : null,
+                c.MembershipStartDate,
+                c.MembershipEndDate,
+                c.IsSuspended,
+                c.PaymentStatus,
+                c.IsActive))
+            .ToListAsync(cancellationToken))
+            .Select(row => row.ToDto(today))
+            .ToList();
 
         return new PaginatedResult<ClientListDto>(clients, totalCount, parameters.Page, parameters.PageSize);
     }
@@ -109,7 +142,7 @@ public class ClientService : IClientService
 
         if (client == null) return null;
 
-        return MapToDto(client);
+        return MapToDto(client, _clock.Today);
     }
 
     public async Task<ClientDto> CreateClientAsync(CreateClientRequest request, int? userId = null, CancellationToken cancellationToken = default)
@@ -141,7 +174,6 @@ public class ClientService : IClientService
                 // start + duration here gave a member registered with a 30-day package
                 // 31 days, and disagreed with every renewal they went on to pay for.
                 client.MembershipEndDate = request.MembershipStartDate.Value.AddDays(package.DurationDays - 1);
-                client.UpdateMembershipStatus(_clock.Today);
             }
         }
 
@@ -168,7 +200,7 @@ public class ClientService : IClientService
             .Include(c => c.CurrentPackage)
             .FirstOrDefaultAsync(c => c.Id == client.Id, cancellationToken);
 
-        return MapToDto(client!);
+        return MapToDto(client!, _clock.Today);
     }
 
     public async Task<ClientDto?> UpdateClientAsync(int id, UpdateClientRequest request, int? userId = null, CancellationToken cancellationToken = default)
@@ -206,8 +238,6 @@ public class ClientService : IClientService
             client.PaymentStatus = request.PaymentStatus.Value;
         }
 
-        client.UpdateMembershipStatus(_clock.Today);
-
         var changes = new List<string>();
         if (beforeStart != client.MembershipStartDate)
             changes.Add($"Start date {ShowDate(beforeStart)} to {ShowDate(client.MembershipStartDate)}");
@@ -233,11 +263,151 @@ public class ClientService : IClientService
             .Include(c => c.CurrentPackage)
             .FirstOrDefaultAsync(c => c.Id == client.Id, cancellationToken);
 
-        return MapToDto(client!);
+        return MapToDto(client!, _clock.Today);
     }
 
     private static string ShowDate(DateTime? date) =>
         date?.ToString("yyyy-MM-dd") ?? "none";
+
+    public async Task<MemberSummaryDto?> GetMemberSummaryAsync(
+        int id, CancellationToken cancellationToken = default)
+    {
+        // Includes removed members on purpose. Opening a deleted member is how you restore
+        // them, so refusing to load the page would leave the undelete unreachable again.
+        var client = await _unitOfWork.Clients.QueryIncludingDeleted()
+            .Include(c => c.CurrentPackage)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+        if (client == null) return null;
+
+        var today = _clock.Today;
+
+        var payments = await _unitOfWork.Payments.Query()
+            .Include(p => p.Package)
+            .Where(p => p.ClientId == id)
+            .OrderByDescending(p => p.PaymentDate)
+            .ToListAsync(cancellationToken);
+
+        var outstanding = await GetOutstandingAsync(id, cancellationToken);
+
+        return new MemberSummaryDto
+        {
+            Id = client.Id,
+            FullName = client.FullName,
+            PhoneNumber = client.PhoneNumber,
+            PhoneDigits = PhoneNumberKey.Normalize(client.PhoneNumber),
+            Email = client.Email,
+
+            MembershipStatus = client.MembershipStatusOn(today).ToString(),
+            IsSuspended = client.IsSuspended,
+            DaysRemaining = client.DaysRemaining(today),
+            MembershipStartDate = client.MembershipStartDate,
+            MembershipEndDate = client.MembershipEndDate,
+            CurrentPackageId = client.CurrentPackageId,
+            CurrentPackageName = client.CurrentPackage?.Name,
+
+            DateOfBirth = client.DateOfBirth,
+            Gender = client.Gender?.ToString(),
+            Address = client.Address,
+            EmergencyContact = client.EmergencyContact,
+            EmergencyPhone = client.EmergencyPhone,
+            Notes = client.Notes,
+
+            IsActive = client.IsActive,
+            CreatedAt = client.CreatedAt,
+
+            Outstanding = outstanding,
+            TotalOwed = outstanding.Sum(row => row.AmountOwed),
+
+            Payments = payments.Select(p => new MemberPaymentDto
+            {
+                Id = p.Id,
+                PaidAt = p.PaymentDate,
+                PackageName = p.Package?.Name,
+                AmountUsd = p.Amount,
+                AmountReceived = p.AmountReceived,
+                Currency = p.Currency.ToString(),
+                ExchangeRate = p.ExchangeRate,
+                PaymentMethod = p.PaymentMethod.ToString(),
+                IsReversal = p.IsReversal,
+                PeriodStartDate = p.PeriodStartDate,
+                PeriodEndDate = p.PeriodEndDate,
+                Notes = p.Notes
+            }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// What this member has put toward packages they have not finished paying for.
+    ///
+    /// Shares <c>PaymentQueries.OutstandingCredit()</c> with the payment desk and the
+    /// who-owes-money report, so the member page cannot quote reception a different figure
+    /// from the one the report chases or the one the next payment is credited against.
+    /// </summary>
+    public async Task<List<OutstandingPackageDto>> GetOutstandingAsync(
+        int clientId, CancellationToken cancellationToken = default)
+    {
+        var credit = await _unitOfWork.Payments.Query()
+            .Where(p => p.ClientId == clientId)
+            .OutstandingCredit()
+            .Include(p => p.Package)
+            .ToListAsync(cancellationToken);
+
+        return credit
+            .Where(p => p.Package != null)
+            .GroupBy(p => p.PackageId)
+            .Select(group =>
+            {
+                var first = group.OrderBy(p => p.PaymentDate).First();
+                var paid = group.Sum(p => p.Amount);
+
+                return new OutstandingPackageDto
+                {
+                    PackageId = group.Key,
+                    PackageName = first.Package.Name,
+                    PackagePrice = first.Package.Price,
+                    AmountPaid = paid,
+                    AmountOwed = first.Package.Price - paid,
+                    OwingSince = first.PaymentDate
+                };
+            })
+            // A group can net to zero or below when a part payment was reversed. The money
+            // is square, so it is not a debt and does not belong on the page.
+            .Where(row => row.AmountOwed > 0 && row.AmountPaid > 0)
+            .OrderBy(row => row.OwingSince)
+            .ToList();
+    }
+
+    public async Task<bool> SetSuspendedAsync(
+        int id, bool suspended, string? reason = null, int? userId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var client = await _unitOfWork.Clients.Query()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+        if (client == null) return false;
+
+        if (client.IsSuspended == suspended) return true;
+
+        if (suspended) client.Suspend(); else client.Resume();
+
+        await _audit.RecordAsync(
+            "Client", client.Id,
+            suspended ? AuditAction.Updated : AuditAction.Updated,
+            suspended
+                ? $"Froze {client.FullName}'s membership"
+                : $"Unfroze {client.FullName}'s membership",
+            suspended
+                // The dates are untouched, so say so - a frozen member is not losing days,
+                // and the question at the desk is always whether they are.
+                ? $"Membership dates unchanged; end date still {ShowDate(client.MembershipEndDate)}."
+                  + (string.IsNullOrWhiteSpace(reason) ? "" : $" Reason: {reason.Trim()}")
+                : $"Now reads as {client.MembershipStatusOn(_clock.Today)}.",
+            userId, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 
     public async Task<bool> DeleteClientAsync(int id, int? userId = null, CancellationToken cancellationToken = default)
     {
@@ -263,44 +433,44 @@ public class ClientService : IClientService
 
         if (client == null) return false;
 
-        client.Restore(_clock.Today);
+        client.Restore();
 
         await _audit.RecordAsync(
             "Client", client.Id, AuditAction.Restored,
             $"Restored member {client.FullName}",
-            $"Membership status recalculated to {client.MembershipStatus}.",
+            $"Membership reads as {client.MembershipStatusOn(_clock.Today)}.",
             userId, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    public async Task<List<ClientListDto>> GetExpiringClientsAsync(int days = 7, CancellationToken cancellationToken = default)
+    public async Task<List<ClientListDto>> GetExpiringClientsAsync(
+        int days = Client.ExpiringWindowDays, CancellationToken cancellationToken = default)
     {
-        var today = _clock.Today.ToDateTime(TimeOnly.MinValue);
-        var endDate = today.AddDays(days);
+        var today = _clock.Today;
 
-        return await _unitOfWork.Clients.Query()
+        return (await _unitOfWork.Clients.Query()
             .Include(c => c.CurrentPackage)
-            .Where(c => c.MembershipEndDate >= today && c.MembershipEndDate <= endDate
-                && MembershipStatuses.AllowedIn.Contains(c.MembershipStatus))
+            .ExpiringWithin(days, today)
             .OrderBy(c => c.MembershipEndDate)
-            .Select(c => new ClientListDto
-            {
-                Id = c.Id,
-                FullName = c.FirstName + " " + c.LastName,
-                PhoneNumber = c.PhoneNumber,
-                Email = c.Email,
-                CurrentPackageName = c.CurrentPackage != null ? c.CurrentPackage.Name : null,
-                MembershipEndDate = c.MembershipEndDate,
-                MembershipStatus = c.MembershipStatus.ToString(),
-                PaymentStatus = c.PaymentStatus.ToString(),
-                IsActive = c.IsActive
-            })
-            .ToListAsync(cancellationToken);
+            .Select(c => new ClientListRow(
+                c.Id,
+                c.FirstName + " " + c.LastName,
+                c.PhoneNumber,
+                c.Email,
+                c.CurrentPackage != null ? c.CurrentPackage.Name : null,
+                c.MembershipStartDate,
+                c.MembershipEndDate,
+                c.IsSuspended,
+                c.PaymentStatus,
+                c.IsActive))
+            .ToListAsync(cancellationToken))
+            .Select(row => row.ToDto(today))
+            .ToList();
     }
 
-    private static ClientDto MapToDto(Client client)
+    private static ClientDto MapToDto(Client client, DateOnly today)
     {
         return new ClientDto
         {
@@ -321,11 +491,47 @@ public class ClientService : IClientService
             CurrentPackageName = client.CurrentPackage?.Name,
             MembershipStartDate = client.MembershipStartDate,
             MembershipEndDate = client.MembershipEndDate,
-            MembershipStatus = client.MembershipStatus.ToString(),
+            MembershipStatus = client.MembershipStatusOn(today).ToString(),
             PaymentStatus = client.PaymentStatus.ToString(),
             IsActive = client.IsActive,
             CreatedAt = client.CreatedAt,
             UpdatedAt = client.UpdatedAt
         };
     }
+}
+
+/// <summary>
+/// The raw columns a member list row needs, straight from the database.
+///
+/// The status is deliberately absent: it is not stored, and the rule that derives it is
+/// ordinary C# that SQL cannot run. So the query fetches the three fields the rule reads -
+/// the two dates and the freeze flag - and <see cref="ToDto"/> applies the rule once the
+/// rows are back in memory. That keeps exactly one definition of the status.
+/// </summary>
+internal readonly record struct ClientListRow(
+    int Id,
+    string FullName,
+    string PhoneNumber,
+    string? Email,
+    string? CurrentPackageName,
+    DateTime? MembershipStartDate,
+    DateTime? MembershipEndDate,
+    bool IsSuspended,
+    PaymentStatus PaymentStatus,
+    bool IsActive)
+{
+    public ClientListDto ToDto(DateOnly today) => new()
+    {
+        Id = Id,
+        FullName = FullName,
+        PhoneNumber = PhoneNumber,
+        Email = Email,
+        CurrentPackageName = CurrentPackageName,
+        MembershipEndDate = MembershipEndDate,
+        MembershipStatus = Client
+            .StatusFrom(IsSuspended, MembershipStartDate, MembershipEndDate, today)
+            .ToString(),
+        PaymentStatus = PaymentStatus.ToString(),
+        IsActive = IsActive
+    };
 }
