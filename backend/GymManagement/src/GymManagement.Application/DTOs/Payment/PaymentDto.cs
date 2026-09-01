@@ -51,4 +51,15 @@ public class PaymentListDto
     public string PaymentMethod { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public bool IsReversal { get; set; }
+
+    /// <summary>
+    /// True when a reversal already cancels this payment.
+    ///
+    /// Worked out by the server, not the browser. This list is paginated, so the reversal
+    /// row can sit on a different page from the payment it cancels - a screen deciding this
+    /// from the rows it happens to be holding would offer a refund button on money that has
+    /// already been handed back. The server refuses that, but only after reception has
+    /// clicked it and read an error.
+    /// </summary>
+    public bool IsReversed { get; set; }
 }

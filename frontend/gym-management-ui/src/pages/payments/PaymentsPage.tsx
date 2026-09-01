@@ -173,7 +173,9 @@ const PaymentsPage = () => {
                 title={
                   p.isReversal
                     ? 'This row is a reversal of another payment'
-                    : 'Reverse this payment'
+                    : p.isReversed
+                      ? 'This payment has already been refunded'
+                      : 'Reverse this payment'
                 }
               >
                 <span>
@@ -181,7 +183,9 @@ const PaymentsPage = () => {
                     size="small"
                     color="warning"
                     aria-label={`Reverse payment from ${p.clientName}`}
-                    disabled={p.isReversal}
+                    // Also disabled once a reversal cancels this row. The server refuses
+                    // the second one, but reception should not be able to click it.
+                    disabled={p.isReversal || p.isReversed}
                     onClick={() => handleReverse(p)}
                   >
                     <ReplayIcon />

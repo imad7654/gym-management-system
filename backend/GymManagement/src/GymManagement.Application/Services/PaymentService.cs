@@ -109,7 +109,12 @@ public class PaymentService : IPaymentService
                 PaymentDate = p.PaymentDate,
                 PaymentMethod = p.PaymentMethod.ToString(),
                 Status = p.Status.ToString(),
-                IsReversal = p.ReversesPaymentId != null
+                IsReversal = p.ReversesPaymentId != null,
+
+                // Asked of the whole table, not of the page being returned. The reversal
+                // that cancels this row is very often on a different page.
+                IsReversed = _unitOfWork.Payments.Query()
+                    .Any(other => other.ReversesPaymentId == p.Id)
             })
             .ToListAsync(cancellationToken);
 

@@ -270,6 +270,9 @@ export interface PaymentListItem {
   paymentMethod: PaymentMethodString;
   status: TransactionStatusString;
   isReversal: boolean;
+  /** True when a reversal already cancels this payment. Decided by the server: the
+   *  reversal row is often on a different page of this list. */
+  isReversed: boolean;
 }
 
 /**
@@ -557,6 +560,9 @@ export interface MemberPayment {
   paymentMethod: PaymentMethodString;
   /** A correction, not income. Shown as such rather than as a negative payment. */
   isReversal: boolean;
+  /** True when a reversal already cancels this payment, so the page stops offering to
+   *  refund money that has already been handed back. */
+  isReversed: boolean;
   periodStartDate?: string | null;
   periodEndDate?: string | null;
   notes?: string | null;

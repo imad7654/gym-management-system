@@ -127,7 +127,14 @@ export const MemberMoneyHistory = ({
                   )}
                 </Box>
 
-                {!readOnly && !payment.isReversal && (
+                {/*
+                  Not offered on a reversal, and not on a payment a reversal has already
+                  cancelled. The server refuses the second refund either way, but only
+                  after reception has clicked it and read an error - and on a money screen
+                  a button that looks like it will hand cash back should never be there
+                  unless it will.
+                */}
+                {!readOnly && !payment.isReversal && !payment.isReversed && (
                   <Button
                     size="small"
                     color="error"
@@ -136,6 +143,11 @@ export const MemberMoneyHistory = ({
                   >
                     Refund
                   </Button>
+                )}
+                {payment.isReversed && (
+                  <Typography variant="caption" color="text.secondary">
+                    Refunded
+                  </Typography>
                 )}
               </Box>
             ))}

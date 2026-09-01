@@ -90,6 +90,13 @@ public class MemberPaymentDto
     /// <summary>A correction, not a payment. Shown as such rather than as negative income.</summary>
     public bool IsReversal { get; set; }
 
+    /// <summary>
+    /// True when a reversal already cancels this payment, so the page can stop offering to
+    /// refund money that has already been handed back. The server refuses a second
+    /// reversal, but only after reception has clicked it and read an error.
+    /// </summary>
+    public bool IsReversed { get; set; }
+
     /// <summary>Set only on the payment that completed a purchase - the one that moved the dates.</summary>
     public DateTime? PeriodStartDate { get; set; }
     public DateTime? PeriodEndDate { get; set; }

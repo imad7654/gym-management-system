@@ -288,6 +288,13 @@ public class ClientService : IClientService
             .OrderByDescending(p => p.PaymentDate)
             .ToListAsync(cancellationToken);
 
+        // Which of these a reversal already cancels. The member's whole history is loaded
+        // above, so this is worked out here rather than asked of the database again.
+        var reversedIds = payments
+            .Where(p => p.ReversesPaymentId.HasValue)
+            .Select(p => p.ReversesPaymentId!.Value)
+            .ToHashSet();
+
         var outstanding = await GetOutstandingAsync(id, cancellationToken);
 
         return new MemberSummaryDto
@@ -330,6 +337,7 @@ public class ClientService : IClientService
                 ExchangeRate = p.ExchangeRate,
                 PaymentMethod = p.PaymentMethod.ToString(),
                 IsReversal = p.IsReversal,
+                IsReversed = reversedIds.Contains(p.Id),
                 PeriodStartDate = p.PeriodStartDate,
                 PeriodEndDate = p.PeriodEndDate,
                 Notes = p.Notes
