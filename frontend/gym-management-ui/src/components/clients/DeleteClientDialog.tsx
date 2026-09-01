@@ -14,7 +14,12 @@ import { Client } from '@app-types/index';
 interface DeleteClientDialogProps {
   open: boolean;
   onClose: () => void;
-  client: Client | null;
+  /**
+   * Only the two fields this dialog actually uses. Asking for a whole Client meant the
+   * member list had to cast a list row to one, which hid the fact that the extra fields
+   * were never populated.
+   */
+  client: Pick<Client, 'id' | 'fullName'> | null;
 }
 
 export const DeleteClientDialog = ({ open, onClose, client }: DeleteClientDialogProps) => {

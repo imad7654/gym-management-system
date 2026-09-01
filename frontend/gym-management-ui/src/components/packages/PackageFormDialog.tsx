@@ -15,7 +15,11 @@ import {
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { packageService } from '@services/packageService';
-import type { Package } from '../../types';
+import type {
+  CreatePackageRequest,
+  Package,
+  UpdatePackageRequest,
+} from '../../types';
 
 interface PackageFormDialogProps {
   open: boolean;
@@ -54,7 +58,7 @@ export const PackageFormDialog = ({ open, onClose, package: pkg }: PackageFormDi
   }, [pkg, open]);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => packageService.createPackage(data),
+    mutationFn: (data: CreatePackageRequest) => packageService.createPackage(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['packages'] });
       setShowSuccess(true);
@@ -66,7 +70,7 @@ export const PackageFormDialog = ({ open, onClose, package: pkg }: PackageFormDi
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => packageService.updatePackage(pkg!.id, data),
+    mutationFn: (data: UpdatePackageRequest) => packageService.updatePackage(pkg!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['packages'] });
       setShowSuccess(true);

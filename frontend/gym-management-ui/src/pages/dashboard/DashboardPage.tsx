@@ -125,10 +125,10 @@ const DashboardPage = () => {
               <Grid item xs={4}>
                 <Box>
                   <Typography variant="body2" color="text.secondary">
-                    Overdue
+                    Owes money
                   </Typography>
                   <Typography variant="h5" color="error.main">
-                    {stats?.paymentSummary.overdueCount || 0}
+                    {stats?.paymentSummary.owesMoneyCount || 0}
                   </Typography>
                 </Box>
               </Grid>

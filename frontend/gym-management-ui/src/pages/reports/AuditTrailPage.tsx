@@ -6,20 +6,14 @@ import {
   CircularProgress,
   MenuItem,
   Pagination,
-  Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { reportService } from '@services/reportService';
 import { AuditActionString, AuditEntry } from '@app-types/index';
+import { ResponsiveTable } from '@components/common';
 
 const ACTION_COLOUR: Record<
   AuditActionString,
@@ -123,32 +117,57 @@ const AuditTrailPage = () => {
       ) : (
         data && (
           <>
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: 170 }}>When</TableCell>
-                    <TableCell sx={{ width: 110 }}>What</TableCell>
-                    <TableCell>Happened</TableCell>
-                    <TableCell sx={{ width: 170 }}>Who</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.items.map((entry) => (
-                    <AuditRow key={entry.id} entry={entry} />
-                  ))}
-                  {data.items.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Nothing recorded yet for this filter.
+            <ResponsiveTable<AuditEntry>
+              rows={data.items}
+              rowKey={(entry) => entry.id}
+              emptyMessage="Nothing recorded yet for this filter."
+              columns={[
+                {
+                  header: 'Happened',
+                  primary: true,
+                  render: (e) => (
+                    <>
+                      <Typography variant="body2">{e.summary}</Typography>
+                      {e.details && (
+                        <Typography variant="caption" color="text.secondary">
+                          {e.details}
                         </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                      )}
+                    </>
+                  ),
+                },
+                {
+                  header: 'What',
+                  badge: true,
+                  render: (e) => (
+                    <Chip
+                      size="small"
+                      label={e.action}
+                      color={ACTION_COLOUR[e.action] ?? 'default'}
+                      variant="outlined"
+                    />
+                  ),
+                },
+                {
+                  header: 'When',
+                  render: (e) => (
+                    <Box component="span" sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+                      {showWhen(e.occurredAt)}
+                    </Box>
+                  ),
+                },
+                {
+                  header: 'Who',
+                  // Null means nobody signed in did it — a nightly job, or a seeded record.
+                  render: (e) =>
+                    e.actorName ?? (
+                      <Typography variant="body2" color="text.secondary" component="span">
+                        System
+                      </Typography>
+                    ),
+                },
+              ]}
+            />
 
             {data.totalPages > 1 && (
               <Stack alignItems="center" sx={{ mt: 2 }}>
@@ -166,37 +185,5 @@ const AuditTrailPage = () => {
     </Box>
   );
 };
-
-const AuditRow = ({ entry }: { entry: AuditEntry }) => (
-  <TableRow hover>
-    <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
-      {showWhen(entry.occurredAt)}
-    </TableCell>
-    <TableCell>
-      <Chip
-        size="small"
-        label={entry.action}
-        color={ACTION_COLOUR[entry.action] ?? 'default'}
-        variant="outlined"
-      />
-    </TableCell>
-    <TableCell>
-      <Typography variant="body2">{entry.summary}</Typography>
-      {entry.details && (
-        <Typography variant="caption" color="text.secondary">
-          {entry.details}
-        </Typography>
-      )}
-    </TableCell>
-    <TableCell>
-      {/* Null means nobody signed in did it — a nightly job, or a seeded record. */}
-      {entry.actorName ?? (
-        <Typography variant="body2" color="text.secondary" component="span">
-          System
-        </Typography>
-      )}
-    </TableCell>
-  </TableRow>
-);
 
 export default AuditTrailPage;

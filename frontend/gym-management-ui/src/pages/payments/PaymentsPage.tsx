@@ -5,13 +5,8 @@ import {
   Box,
   Button,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
+  ChipProps,
   TextField,
   MenuItem,
   Grid,
@@ -24,6 +19,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ReplayIcon from '@mui/icons-material/Replay';
 import type { PaymentListItem, PaymentQueryParams, PaymentMethodString, TransactionStatusString } from '../../types/index';
 import { PaymentFormDialog, ReversePaymentDialog } from '@components/payments';
+import { ResponsiveTable } from '@components/common';
 
 const PaymentsPage = () => {
   const [queryParams, setQueryParams] = useState<PaymentQueryParams>({
@@ -44,7 +40,7 @@ const PaymentsPage = () => {
     setOpenReverseDialog(true);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): ChipProps['color'] => {
     switch (status) {
       case 'Completed':
         return 'success';
@@ -138,73 +134,64 @@ const PaymentsPage = () => {
         </Grid>
       </Paper>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Client</TableCell>
-              <TableCell>Package</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Method</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : paymentsData?.items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No payments found
-                </TableCell>
-              </TableRow>
-            ) : (
-              paymentsData?.items.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell>{payment.clientName}</TableCell>
-                  <TableCell>{payment.packageName}</TableCell>
-                  <TableCell>${payment.amount.toFixed(2)}</TableCell>
-                  <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{payment.paymentMethod === 'Whish' ? 'Whish Money' : payment.paymentMethod}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={payment.status}
-                      color={getStatusColor(payment.status) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Tooltip
-                      title={
-                        payment.isReversal
-                          ? 'This row is a reversal of another payment'
-                          : 'Reverse this payment'
-                      }
-                    >
-                      <span>
-                        <IconButton
-                          size="small"
-                          color="warning"
-                          disabled={payment.isReversal}
-                          onClick={() => handleReverse(payment)}
-                        >
-                          <ReplayIcon />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <ResponsiveTable<PaymentListItem>
+        rows={paymentsData?.items ?? []}
+        rowKey={(payment) => payment.id}
+        isLoading={isLoading}
+        emptyMessage="No payments match these filters"
+        columns={[
+          {
+            header: 'Amount',
+            primary: true,
+            render: (p) =>
+              p.isReversal
+                ? `-$${Math.abs(p.amount).toFixed(2)}`
+                : `$${p.amount.toFixed(2)}`,
+          },
+          {
+            header: 'Status',
+            badge: true,
+            render: (p) =>
+              p.isReversal ? (
+                <Chip label="Refund" color="error" size="small" variant="outlined" />
+              ) : (
+                <Chip label={p.status} color={getStatusColor(p.status)} size="small" />
+              ),
+          },
+          { header: 'Member', render: (p) => p.clientName },
+          { header: 'Package', render: (p) => p.packageName },
+          { header: 'Date', render: (p) => new Date(p.paymentDate).toLocaleDateString() },
+          {
+            header: 'Method',
+            render: (p) => (p.paymentMethod === 'Whish' ? 'Whish Money' : p.paymentMethod),
+          },
+          {
+            header: 'Actions',
+            actions: true,
+            render: (p) => (
+              <Tooltip
+                title={
+                  p.isReversal
+                    ? 'This row is a reversal of another payment'
+                    : 'Reverse this payment'
+                }
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    color="warning"
+                    aria-label={`Reverse payment from ${p.clientName}`}
+                    disabled={p.isReversal}
+                    onClick={() => handleReverse(p)}
+                  >
+                    <ReplayIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ),
+          },
+        ]}
+      />
 
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">

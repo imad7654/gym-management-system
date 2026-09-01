@@ -8,18 +8,13 @@ import {
   IconButton,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
 import { ChevronLeft, ChevronRight, Today } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
+import { ResponsiveTable } from '@components/common';
 import { reportService } from '@services/reportService';
 import { DailyTakings, TakingsPayment } from '@app-types/index';
 
@@ -180,25 +175,65 @@ const TakingsBody = ({ takings }: { takings: DailyTakings }) => (
         <Typography variant="h6" sx={{ mb: 1.5 }}>
           Every movement
         </Typography>
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Time</TableCell>
-                <TableCell>Member</TableCell>
-                <TableCell>Package</TableCell>
-                <TableCell>Method</TableCell>
-                <TableCell align="right">Handed over</TableCell>
-                <TableCell align="right">USD</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {takings.payments.map((row) => (
-                <MovementRow key={row.id} row={row} />
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <ResponsiveTable<TakingsPayment>
+          rows={takings.payments}
+          rowKey={(row) => row.id}
+          emptyMessage="Nothing taken on this day"
+          columns={[
+            {
+              header: 'USD',
+              primary: true,
+              render: (r) => (
+                <Typography
+                  component="span"
+                  sx={{
+                    fontWeight: 600,
+                    color: r.amountUsd < 0 ? 'warning.main' : 'inherit',
+                  }}
+                >
+                  {usd(r.amountUsd)}
+                </Typography>
+              ),
+            },
+            {
+              header: 'Kind',
+              badge: true,
+              render: (r) =>
+                r.isReversal ? (
+                  <Chip
+                    label="Refund"
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    sx={{ height: 20 }}
+                  />
+                ) : null,
+            },
+            { header: 'Member', render: (r) => r.clientName },
+            { header: 'Time', render: (r) => showTime(r.takenAt) },
+            { header: 'Package', render: (r) => r.packageName },
+            {
+              header: 'Method',
+              render: (r) => (r.paymentMethod === 'Whish' ? 'Whish Money' : r.paymentMethod),
+            },
+            {
+              header: 'Handed over',
+              align: 'right',
+              render: (r) =>
+                r.currency === 'Lbp' ? (
+                  <Tooltip
+                    title={`Converted at ${Math.round(
+                      r.exchangeRate ?? 0
+                    ).toLocaleString()} LBP per $`}
+                  >
+                    <span>{lbp(r.amountReceived)}</span>
+                  </Tooltip>
+                ) : (
+                  usd(r.amountReceived)
+                ),
+            },
+          ]}
+        />
       </>
     )}
   </>
@@ -227,34 +262,4 @@ const Line = ({
     </Typography>
   </Stack>
 );
-
-const MovementRow = ({ row }: { row: TakingsPayment }) => (
-  <TableRow hover sx={{ opacity: row.isReversal ? 0.75 : 1 }}>
-    <TableCell>{showTime(row.takenAt)}</TableCell>
-    <TableCell>
-      {row.clientName}
-      {row.isReversal && (
-        <Chip label="Refund" size="small" color="warning" variant="outlined" sx={{ ml: 1, height: 20 }} />
-      )}
-    </TableCell>
-    <TableCell>{row.packageName}</TableCell>
-    <TableCell>{row.paymentMethod === 'Whish' ? 'Whish Money' : row.paymentMethod}</TableCell>
-    <TableCell align="right">
-      {row.currency === 'Lbp' ? (
-        <Tooltip title={`Converted at ${Math.round(row.exchangeRate ?? 0).toLocaleString()} LBP per $`}>
-          <span>{lbp(row.amountReceived)}</span>
-        </Tooltip>
-      ) : (
-        usd(row.amountReceived)
-      )}
-    </TableCell>
-    <TableCell
-      align="right"
-      sx={{ fontWeight: 600, color: row.amountUsd < 0 ? 'warning.main' : 'inherit' }}
-    >
-      {usd(row.amountUsd)}
-    </TableCell>
-  </TableRow>
-);
-
 export default DailyTakingsPage;

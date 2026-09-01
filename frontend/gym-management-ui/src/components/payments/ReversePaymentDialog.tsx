@@ -16,7 +16,12 @@ import { PaymentListItem } from '@app-types/index';
 interface ReversePaymentDialogProps {
   open: boolean;
   onClose: () => void;
-  payment: PaymentListItem | null;
+  /**
+   * Only the fields this dialog reads. The member page opens it from a payment row that is
+   * not a full list item, and demanding one there would mean inventing the missing fields.
+   */
+  payment: Pick<PaymentListItem, 'id' | 'clientName' | 'amount'> &
+    Partial<Pick<PaymentListItem, 'packageName'>> | null;
 }
 
 /**
@@ -59,8 +64,9 @@ export const ReversePaymentDialog = ({ open, onClose, payment }: ReversePaymentD
         )}
 
         <Typography sx={{ mb: 2 }}>
-          Reverse <strong>${payment?.amount.toFixed(2)}</strong> from{' '}
-          <strong>{payment?.clientName}</strong> for {payment?.packageName}?
+          Reverse <strong>${Math.abs(payment?.amount ?? 0).toFixed(2)}</strong> from{' '}
+          <strong>{payment?.clientName}</strong>
+          {payment?.packageName ? ` for ${payment.packageName}` : ''}?
         </Typography>
 
         <Alert severity="info" sx={{ mb: 2 }}>

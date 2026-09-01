@@ -167,24 +167,30 @@ export interface ClientListItem {
   isActive: boolean;
 }
 
+/**
+ * The optional fields are `| null` rather than only `undefined` because the forms send an
+ * explicit null to clear a field the user has emptied. The server treats both the same, but
+ * typing them as undefined-only meant every form had to cast itself to `any` to compile -
+ * which was also hiding a gender value being sent as a number instead of a name.
+ */
 export interface CreateClientRequest {
   firstName: string;
   lastName: string;
-  email?: string;
+  email?: string | null;
   phoneNumber: string;
-  dateOfBirth?: string;
-  gender?: GenderString;
-  address?: string;
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  notes?: string;
-  packageId?: number;
-  membershipStartDate?: string;
+  dateOfBirth?: string | null;
+  gender?: GenderString | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+  emergencyPhone?: string | null;
+  notes?: string | null;
+  packageId?: number | null;
+  membershipStartDate?: string | null;
 }
 
 export interface UpdateClientRequest extends CreateClientRequest {
-  membershipEndDate?: string;
-  paymentStatus?: PaymentStatusString;
+  membershipEndDate?: string | null;
+  paymentStatus?: PaymentStatusString | null;
 }
 
 export interface ClientQueryParams {
@@ -308,7 +314,8 @@ export interface DashboardStats {
   paymentSummary: {
     paidCount: number;
     pendingCount: number;
-    overdueCount: number;
+    /** Members who part-paid and still owe the rest. Replaced an Overdue count nothing could set. */
+    owesMoneyCount: number;
   };
   revenueSummary: {
     todayRevenue: number;
@@ -318,13 +325,6 @@ export interface DashboardStats {
   };
 }
 
-export interface RevenueChartData {
-  data: {
-    label: string;
-    revenue: number;
-    transactionCount: number;
-  }[];
-}
 
 export interface ExpiringMembership {
   clientId: number;
@@ -335,21 +335,6 @@ export interface ExpiringMembership {
   daysUntilExpiration: number;
 }
 
-export interface RecentPayment {
-  id: number;
-  clientName: string;
-  amount: number;
-  paymentDate: string;
-  paymentMethod: string;
-}
-
-export interface RecentClient {
-  id: number;
-  fullName: string;
-  phoneNumber: string;
-  packageName?: string;
-  createdAt: string;
-}
 
 // Gym Info types
 export interface GymInfo {
@@ -507,4 +492,72 @@ export interface AuditQueryParams {
   from?: string;
   to?: string;
   search?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Member page
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything the member page shows, fetched in one request. The server derives the status
+ * and the days remaining from the membership dates - the browser never works them out, or
+ * the page and the door could disagree about who is allowed in.
+ */
+export interface MemberSummary {
+  id: number;
+  fullName: string;
+  phoneNumber: string;
+  /** Digits only, ready for `tel:` and WhatsApp links. */
+  phoneDigits?: string | null;
+  email?: string | null;
+
+  membershipStatus: MembershipStatusString;
+  isSuspended: boolean;
+  /** Inclusive of today; negative once lapsed, so the page can say how long ago. */
+  daysRemaining?: number | null;
+
+  membershipStartDate?: string | null;
+  membershipEndDate?: string | null;
+  currentPackageId?: number | null;
+  currentPackageName?: string | null;
+
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+  emergencyPhone?: string | null;
+  notes?: string | null;
+
+  isActive: boolean;
+  createdAt: string;
+
+  outstanding: OutstandingPackage[];
+  totalOwed: number;
+  payments: MemberPayment[];
+}
+
+/** Money put toward one package that has not bought anything yet. */
+export interface OutstandingPackage {
+  packageId: number;
+  packageName: string;
+  packagePrice: number;
+  amountPaid: number;
+  amountOwed: number;
+  owingSince: string;
+}
+
+export interface MemberPayment {
+  id: number;
+  paidAt: string;
+  packageName?: string | null;
+  amountUsd: number;
+  amountReceived: number;
+  currency: CurrencyString;
+  exchangeRate?: number | null;
+  paymentMethod: PaymentMethodString;
+  /** A correction, not income. Shown as such rather than as a negative payment. */
+  isReversal: boolean;
+  periodStartDate?: string | null;
+  periodEndDate?: string | null;
+  notes?: string | null;
 }

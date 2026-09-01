@@ -12,7 +12,12 @@ import {
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '@services/clientService';
-import { Client, GenderMap, GenderString } from '@app-types/index';
+import {
+  Client,
+  CreateClientRequest,
+  GenderString,
+  UpdateClientRequest,
+} from '@app-types/index';
 
 interface ClientFormDialogProps {
   open: boolean;
@@ -58,7 +63,7 @@ export const ClientFormDialog = ({ open, onClose, client }: ClientFormDialogProp
   }, [client, open]);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => clientService.createClient(data),
+    mutationFn: (data: CreateClientRequest) => clientService.createClient(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       onClose();
@@ -67,7 +72,7 @@ export const ClientFormDialog = ({ open, onClose, client }: ClientFormDialogProp
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => clientService.updateClient(client!.id, data),
+    mutationFn: (data: UpdateClientRequest) => clientService.updateClient(client!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       onClose();
@@ -93,14 +98,18 @@ export const ClientFormDialog = ({ open, onClose, client }: ClientFormDialogProp
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Convert empty strings to null and gender string to enum number
-    const cleanedData = {
+    // Empty strings become null so the server clears the field rather than storing "".
+    //
+    // Gender travels as its name, not its number. This used to send GenderMap[...], which
+    // is the numeric enum value; it only worked because .NET also accepts integers for a
+    // string enum. The wire format for every enum in this app is the name.
+    const cleanedData: UpdateClientRequest = {
       firstName: formData.firstName,
       lastName: formData.lastName,
       phoneNumber: formData.phoneNumber,
       email: formData.email || null,
       dateOfBirth: formData.dateOfBirth || null,
-      gender: formData.gender ? GenderMap[formData.gender as GenderString] : null,
+      gender: (formData.gender as GenderString) || null,
       address: formData.address || null,
       emergencyContact: formData.emergencyContact || null,
       emergencyPhone: formData.emergencyPhone || null,
@@ -108,9 +117,9 @@ export const ClientFormDialog = ({ open, onClose, client }: ClientFormDialogProp
     };
 
     if (isEditMode) {
-      updateMutation.mutate(cleanedData as any);
+      updateMutation.mutate(cleanedData);
     } else {
-      createMutation.mutate(cleanedData as any);
+      createMutation.mutate(cleanedData);
     }
   };
 

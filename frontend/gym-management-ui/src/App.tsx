@@ -15,7 +15,7 @@ import ErrorBoundary from '@components/ErrorBoundary';
 import { HomePage } from '@pages/home';
 import { LoginPage } from '@pages/login';
 import { DashboardPage } from '@pages/dashboard';
-import { ClientsPage } from '@pages/clients';
+import { ClientsPage, MemberPage } from '@pages/clients';
 import { PackagesPage } from '@pages/packages';
 import { PaymentsPage } from '@pages/payments';
 import { SettingsPage } from '@pages/settings';
@@ -49,6 +49,7 @@ function App() {
   <Route path="dashboard" element={<DashboardPage />} />
   <Route path="clients" element={<ClientsPage />} />
   <Route path="clients/import" element={<ImportMembersPage />} />
+  <Route path="clients/:id" element={<MemberPage />} />
   <Route path="payments" element={<PaymentsPage />} />
   <Route path="reports/who-owes" element={<WhoOwesMoneyPage />} />
   <Route path="reports/daily-takings" element={<DailyTakingsPage />} />

@@ -5,12 +5,6 @@ import {
   CircularProgress,
   Paper,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -18,6 +12,8 @@ import { CheckCircleOutline, Phone } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { reportService } from '@services/reportService';
 import { OwedAmount } from '@app-types/index';
+import { ResponsiveTable } from '@components/common';
+import { useNavigate } from 'react-router-dom';
 
 const usd = (amount: number) =>
   `$${amount.toLocaleString('en-US', {
@@ -43,6 +39,7 @@ const showDate = (iso: string) => {
  * outstanding rather than by size: the oldest debt is the one least likely to be paid.
  */
 const WhoOwesMoneyPage = () => {
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports', 'who-owes'],
     queryFn: reportService.getWhoOwesMoney,
@@ -101,77 +98,89 @@ const WhoOwesMoneyPage = () => {
             </Typography>
           </Paper>
 
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Member</TableCell>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>Package</TableCell>
-                  <TableCell align="right">Paid</TableCell>
-                  <TableCell align="right">Still owes</TableCell>
-                  <TableCell>Waiting</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {report.members.map((row) => (
-                  <OwedRow key={`${row.clientId}-${row.packageName}`} row={row} />
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <ResponsiveTable<OwedAmount>
+            rows={report.members}
+            rowKey={(row) => `${row.clientId}-${row.packageName}`}
+            onRowClick={(row) => navigate(`/admin/clients/${row.clientId}`)}
+            emptyMessage="Nobody owes anything"
+            columns={[
+              { header: 'Member', primary: true, render: (r) => r.clientName },
+              {
+                header: 'Status',
+                badge: true,
+                render: (r) => (
+                  <Chip
+                    size="small"
+                    label={r.membershipStatus}
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: 11 }}
+                  />
+                ),
+              },
+              {
+                header: 'Still owes',
+                align: 'right',
+                render: (r) => (
+                  <Typography
+                    component="span"
+                    variant="body2"
+                    sx={{ fontWeight: 700, color: 'warning.main' }}
+                  >
+                    {usd(r.amountOwed)}
+                  </Typography>
+                ),
+              },
+              {
+                header: 'Phone',
+                // A tel: link, because this list exists to be phoned through. It stops the
+                // row click so tapping the number rings rather than opening the member.
+                render: (r) => (
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    alignItems="center"
+                    component="a"
+                    href={`tel:${r.phoneNumber.replace(/\s/g, '')}`}
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    sx={{
+                      color: 'inherit',
+                      textDecoration: 'none',
+                      justifyContent: 'flex-end',
+                      '&:hover': { color: 'primary.main' },
+                    }}
+                  >
+                    <Phone sx={{ fontSize: 15 }} />
+                    <span>{r.phoneNumber}</span>
+                  </Stack>
+                ),
+              },
+              {
+                header: 'Package',
+                render: (r) => (
+                  <Tooltip title={`Full price ${usd(r.packagePrice)}`}>
+                    <span>{r.packageName}</span>
+                  </Tooltip>
+                ),
+              },
+              { header: 'Paid', align: 'right', render: (r) => usd(r.amountPaid) },
+              {
+                header: 'Waiting',
+                render: (r) => (
+                  <Tooltip title={`First paid ${showDate(r.owingSince)}`}>
+                    <span>
+                      {r.daysOutstanding === 0
+                        ? 'Today'
+                        : `${r.daysOutstanding} day${r.daysOutstanding === 1 ? '' : 's'}`}
+                    </span>
+                  </Tooltip>
+                ),
+              },
+            ]}
+          />
         </>
       )}
     </Box>
   );
 };
-
-const OwedRow = ({ row }: { row: OwedAmount }) => (
-  <TableRow hover>
-    <TableCell>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {row.clientName}
-      </Typography>
-      <Chip
-        size="small"
-        label={row.membershipStatus}
-        variant="outlined"
-        sx={{ mt: 0.5, height: 20, fontSize: 11 }}
-      />
-    </TableCell>
-    <TableCell>
-      {/* A tel: link, because this list exists to be phoned through. */}
-      <Stack
-        direction="row"
-        spacing={0.5}
-        alignItems="center"
-        component="a"
-        href={`tel:${row.phoneNumber.replace(/\s/g, '')}`}
-        sx={{ color: 'inherit', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
-      >
-        <Phone sx={{ fontSize: 15 }} />
-        <span>{row.phoneNumber}</span>
-      </Stack>
-    </TableCell>
-    <TableCell>
-      <Tooltip title={`Full price ${usd(row.packagePrice)}`}>
-        <span>{row.packageName}</span>
-      </Tooltip>
-    </TableCell>
-    <TableCell align="right">{usd(row.amountPaid)}</TableCell>
-    <TableCell align="right" sx={{ fontWeight: 700, color: 'warning.main' }}>
-      {usd(row.amountOwed)}
-    </TableCell>
-    <TableCell>
-      <Tooltip title={`First paid ${showDate(row.owingSince)}`}>
-        <span>
-          {row.daysOutstanding === 0
-            ? 'Today'
-            : `${row.daysOutstanding} day${row.daysOutstanding === 1 ? '' : 's'}`}
-        </span>
-      </Tooltip>
-    </TableCell>
-  </TableRow>
-);
 
 export default WhoOwesMoneyPage;

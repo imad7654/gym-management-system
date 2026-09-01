@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
+import { MemberSearch } from './MemberSearch';
 
 const drawerWidth = 240;
 
@@ -82,7 +83,12 @@ export const AdminLayout = () => {
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               selected={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
+              // Closes the drawer as well as navigating. On a phone the temporary drawer
+              // covers the page it just opened, so leaving it up hides the result of the tap.
+              onClick={() => {
+                setMobileOpen(false);
+                navigate(item.path);
+              }}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(46, 125, 50, 0.12)',
@@ -123,17 +129,36 @@ export const AdminLayout = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+          {/* The gym name gives way to the search box on a phone. Reception needs to find
+              a member far more often than it needs reminding which gym it is in. */}
+          <Typography
+            variant="h6"
+            noWrap
+            sx={{ mr: 2, display: { xs: 'none', md: 'block' } }}
+          >
             🐻 The Fit Bear Gym
           </Typography>
+
+          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: { xs: 'flex-start', md: 'center' } }}>
+            <MemberSearch />
+          </Box>
+
           <Button
             color="inherit"
             endIcon={<ArrowDropDownIcon />}
             onClick={(e) => setAccountAnchor(e.currentTarget)}
-            sx={{ textTransform: 'none' }}
+            sx={{ textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
           >
             {user?.fullName || 'Admin'}
           </Button>
+          <IconButton
+            color="inherit"
+            aria-label="Account"
+            onClick={(e) => setAccountAnchor(e.currentTarget)}
+            sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+          >
+            <ArrowDropDownIcon />
+          </IconButton>
           <Menu
             anchorEl={accountAnchor}
             open={Boolean(accountAnchor)}
@@ -192,8 +217,10 @@ export const AdminLayout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          // Desktop padding wastes a third of a phone screen's width.
+          p: { xs: 1, sm: 3 },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
+          minWidth: 0,
         }}
       >
         <Toolbar />

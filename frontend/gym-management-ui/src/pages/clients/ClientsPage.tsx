@@ -1,17 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
   Box,
   Button,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
+  ChipProps,
   IconButton,
   TextField,
   InputAdornment,
@@ -24,8 +20,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import type { ClientQueryParams, Client, ClientListItem } from '../../types/index';
 import { ClientFormDialog, DeleteClientDialog } from '@components/clients';
+import { ResponsiveTable } from '@components/common';
 
 const ClientsPage = () => {
+  const navigate = useNavigate();
   const [queryParams, setQueryParams] = useState<ClientQueryParams>({
     page: 1,
     pageSize: 10,
@@ -68,7 +66,7 @@ const ClientsPage = () => {
     setClientToDelete(null);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): ChipProps['color'] => {
     switch (status) {
       case 'Active':
         return 'success';
@@ -81,7 +79,7 @@ const ClientsPage = () => {
     }
   };
 
-  const getPaymentColor = (status: string) => {
+  const getPaymentColor = (status: string): ChipProps['color'] => {
     switch (status) {
       case 'Paid':
         return 'success';
@@ -125,79 +123,72 @@ const ClientsPage = () => {
         />
       </Paper>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Package</TableCell>
-              <TableCell>Expiration</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Payment</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : clientsData?.items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No clients found
-                </TableCell>
-              </TableRow>
-            ) : (
-              clientsData?.items.map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell>{client.fullName}</TableCell>
-                  <TableCell>{client.phoneNumber}</TableCell>
-                  <TableCell>{client.currentPackageName || 'N/A'}</TableCell>
-                  <TableCell>
-                    {client.membershipEndDate
-                      ? new Date(client.membershipEndDate).toLocaleDateString()
-                      : 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={client.membershipStatus}
-                      color={getStatusColor(client.membershipStatus) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={client.paymentStatus}
-                      color={getPaymentColor(client.paymentStatus) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleEditClient(client)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteClient(client)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <ResponsiveTable<ClientListItem>
+        rows={clientsData?.items ?? []}
+        rowKey={(client) => client.id}
+        isLoading={isLoading}
+        emptyMessage={
+          queryParams.search ? 'Nobody matches that search' : 'No members yet'
+        }
+        onRowClick={(client) => navigate(`/admin/clients/${client.id}`)}
+        columns={[
+          { header: 'Name', primary: true, render: (c) => c.fullName },
+          {
+            header: 'Status',
+            badge: true,
+            render: (c) => (
+              <Chip
+                label={c.membershipStatus}
+                color={getStatusColor(c.membershipStatus)}
+                size="small"
+              />
+            ),
+          },
+          { header: 'Phone', render: (c) => c.phoneNumber },
+          { header: 'Package', render: (c) => c.currentPackageName || '—' },
+          {
+            header: 'Expires',
+            render: (c) =>
+              c.membershipEndDate
+                ? new Date(c.membershipEndDate).toLocaleDateString()
+                : '—',
+          },
+          {
+            header: 'Payment',
+            render: (c) => (
+              <Chip
+                label={c.paymentStatus}
+                color={getPaymentColor(c.paymentStatus)}
+                size="small"
+              />
+            ),
+          },
+          {
+            header: 'Actions',
+            actions: true,
+            render: (c) => (
+              <>
+                <IconButton
+                  size="small"
+                  color="primary"
+                  aria-label={`Edit ${c.fullName}`}
+                  onClick={() => handleEditClient(c)}
+                >
+                  <EditIcon />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  color="error"
+                  aria-label={`Remove ${c.fullName}`}
+                  onClick={() => handleDeleteClient(c)}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </>
+            ),
+          },
+        ]}
+      />
 
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">
@@ -228,7 +219,7 @@ const ClientsPage = () => {
       <DeleteClientDialog
         open={openDeleteDialog}
         onClose={handleCloseDeleteDialog}
-        client={clientToDelete ? { id: clientToDelete.id, fullName: clientToDelete.fullName } as any : null}
+        client={clientToDelete ? { id: clientToDelete.id, fullName: clientToDelete.fullName } : null}
       />
     </Container>
   );

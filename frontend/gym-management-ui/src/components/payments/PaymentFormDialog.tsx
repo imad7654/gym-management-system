@@ -33,6 +33,17 @@ import {
 interface PaymentFormDialogProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * Opened from a member's own page, so the member is already decided and the search box is
+   * replaced by their name. This is what removes the second search from a renewal.
+   */
+  lockedClient?: { id: number; fullName: string };
+  /**
+   * Preselected package — the one they still owe on, or failing that the one they last
+   * bought. Renewing the same package is the common case, and the other packages stay
+   * visible so switching is one tap rather than a different screen.
+   */
+  defaultPackageId?: number;
 }
 
 /**
@@ -43,7 +54,12 @@ interface PaymentFormDialogProps {
  * worked out by the server from the package. The figures shown below the form are a
  * preview of that calculation, never the source of it.
  */
-export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => {
+export const PaymentFormDialog = ({
+  open,
+  onClose,
+  lockedClient,
+  defaultPackageId,
+}: PaymentFormDialogProps) => {
   const queryClient = useQueryClient();
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -98,6 +114,25 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
   useEffect(() => {
     if (!open) resetForm();
   }, [open]);
+
+  // Opened from a member's page: the member and usually the package are already known, so
+  // the form starts where reception would otherwise have had to navigate to.
+  useEffect(() => {
+    if (!open || !lockedClient) return;
+
+    setSelectedClient({
+      id: lockedClient.id,
+      fullName: lockedClient.fullName,
+      phoneNumber: '',
+      membershipStatus: 'Pending',
+      paymentStatus: 'Pending',
+      isActive: true,
+    });
+
+    if (defaultPackageId) {
+      setFormData((prev) => ({ ...prev, packageId: defaultPackageId }));
+    }
+  }, [open, lockedClient, defaultPackageId]);
 
   // Fill in the rate the owner set this morning, so reception is not retyping it from
   // memory on every LBP payment. Only when the box is still empty: a rate typed for this
@@ -167,9 +202,38 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
     ? received
     : null;
 
+  /**
+   * What this member has already put toward the selected package without getting anything
+   * for it yet — the server's own definition, not a second calculation.
+   *
+   * Without this the form compared the amount being typed against the full package price
+   * on its own. So a member who had already paid $20 of $30 and came back with the last
+   * $10 was warned their membership would not be extended — when the server was about to
+   * credit the $20, reach the price, and extend it. The screen said the opposite of what
+   * happened.
+   */
+  const { data: outstanding } = useQuery({
+    queryKey: ['clients', selectedClient?.id, 'outstanding'],
+    queryFn: () => clientService.getOutstanding(selectedClient!.id),
+    enabled: open && !!selectedClient,
+  });
+
+  const creditOnPackage =
+    outstanding?.find((row) => row.packageId === formData.packageId)?.amountPaid ?? 0;
+
+  const totalTowardPackage = amountUsd !== null ? amountUsd + creditOnPackage : null;
+
   const shortfall =
-    selectedPackage && amountUsd !== null ? selectedPackage.price - amountUsd : null;
+    selectedPackage && totalTowardPackage !== null
+      ? selectedPackage.price - totalTowardPackage
+      : null;
+
+  // A fraction of a cent is rounding, not a debt.
   const isShort = shortfall !== null && shortfall > 0.004;
+
+  /** True when earlier part payments are what tip this one over the line. */
+  const completesWithCredit =
+    creditOnPackage > 0 && shortfall !== null && shortfall <= 0.004;
 
   const isValid =
     !!selectedClient &&
@@ -210,6 +274,15 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
 
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
+              {lockedClient ? (
+                <TextField
+                  fullWidth
+                  label="Member"
+                  value={lockedClient.fullName}
+                  InputProps={{ readOnly: true }}
+                  helperText="Taking a payment from this member's page"
+                />
+              ) : (
               <Autocomplete
                 options={clientOptions?.items || []}
                 getOptionLabel={(option) => `${option.fullName} · ${option.phoneNumber}`}
@@ -237,6 +310,7 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
                   />
                 )}
               />
+              )}
             </Grid>
 
             <Grid item xs={12}>
@@ -332,18 +406,35 @@ export const PaymentFormDialog = ({ open, onClose }: PaymentFormDialogProps) => 
                     {isLbp ? 'Converts to' : 'Counts as'}
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    ${amountUsd.toFixed(2)} of ${selectedPackage.price.toFixed(2)}
+                    ${amountUsd.toFixed(2)}
+                    {creditOnPackage > 0
+                      ? ` + $${creditOnPackage.toFixed(2)} already paid`
+                      : ''}{' '}
+                    of ${selectedPackage.price.toFixed(2)}
                   </Typography>
                 </Box>
+              </Grid>
+            )}
+
+            {completesWithCredit && (
+              <Grid item xs={12}>
+                <Alert severity="success">
+                  This finishes the {selectedPackage?.name} package — ${creditOnPackage.toFixed(2)}
+                  {' '}was already down. The membership will be extended.
+                </Alert>
               </Grid>
             )}
 
             {isShort && (
               <Grid item xs={12}>
                 <Alert severity="warning">
-                  This is ${shortfall!.toFixed(2)} short of the package price. The payment
-                  will be recorded and the member will show as owing the difference, but
-                  their membership will <strong>not</strong> be extended.
+                  {creditOnPackage > 0
+                    ? `With the $${creditOnPackage.toFixed(2)} already paid, this is still $${shortfall!.toFixed(
+                        2
+                      )} short of the package price.`
+                    : `This is $${shortfall!.toFixed(2)} short of the package price.`}{' '}
+                  The payment will be recorded and the member will show as owing the
+                  difference, but their membership will <strong>not</strong> be extended.
                 </Alert>
               </Grid>
             )}
