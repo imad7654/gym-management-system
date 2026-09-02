@@ -88,4 +88,39 @@ public class ReportsController : ControllerBase
         var entries = await _auditService.GetEntriesAsync(parameters, cancellationToken);
         return Ok(ApiResponse<PaginatedResult<AuditEntryDto>>.SuccessResponse(entries));
     }
+    /// <summary>
+    /// Revenue and membership month by month, for the chart.
+    /// </summary>
+    /// <remarks>
+    /// The owner's. Revenue history is the one thing reception is deliberately not shown,
+    /// and this is exactly that.
+    ///
+    /// Money is counted as cash in - a payment belongs to the month it was taken, whole,
+    /// even when it bought three months. That keeps this chart agreeing with the drawer,
+    /// the daily takings report and the bank.
+    /// </remarks>
+    [Authorize(Policy = "AdminOnly")]
+    [HttpGet("revenue")]
+    [ProducesResponseType(typeof(ApiResponse<RevenueTrendDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRevenueTrend(
+        [FromQuery] int months = 12, CancellationToken cancellationToken = default)
+    {
+        var trend = await _reportService.GetRevenueTrendAsync(months, cancellationToken);
+        return Ok(ApiResponse<RevenueTrendDto>.SuccessResponse(trend));
+    }
+
+    /// <summary>
+    /// One month of the chart opened up: every payment in it, split the way the daily
+    /// takings report splits a day.
+    /// </summary>
+    [Authorize(Policy = "AdminOnly")]
+    [HttpGet("revenue/{year:int}/{month:int}")]
+    [ProducesResponseType(typeof(ApiResponse<RevenueMonthDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetRevenueMonth(
+        int year, int month, CancellationToken cancellationToken)
+    {
+        var detail = await _reportService.GetRevenueMonthAsync(year, month, cancellationToken);
+        return Ok(ApiResponse<RevenueMonthDetailDto>.SuccessResponse(detail));
+    }
 }

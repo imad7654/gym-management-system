@@ -5,6 +5,8 @@ import {
   AuditQueryParams,
   DailyTakings,
   PaginatedResult,
+  RevenueMonthDetail,
+  RevenueTrend,
   WhoOwesMoney,
 } from '@app-types/index';
 
@@ -25,6 +27,29 @@ export const reportService = {
     const response = await axiosInstance.get<ApiResponse<DailyTakings>>(
       '/reports/daily-takings',
       { params: date ? { date } : undefined }
+    );
+    return response.data.data!;
+  },
+
+  /**
+   * Revenue and membership month by month. Admin only — this is revenue history, which is
+   * the one thing reception is deliberately not shown.
+   */
+  getRevenueTrend: async (months = 12): Promise<RevenueTrend> => {
+    const response = await axiosInstance.get<ApiResponse<RevenueTrend>>(
+      '/reports/revenue',
+      { params: { months } }
+    );
+    return response.data.data!;
+  },
+
+  /** One month opened up: every payment in it, split the way a day is split. */
+  getRevenueMonth: async (
+    year: number,
+    month: number
+  ): Promise<RevenueMonthDetail> => {
+    const response = await axiosInstance.get<ApiResponse<RevenueMonthDetail>>(
+      `/reports/revenue/${year}/${month}`
     );
     return response.data.data!;
   },

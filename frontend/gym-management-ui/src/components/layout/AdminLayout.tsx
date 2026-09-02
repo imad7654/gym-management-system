@@ -32,6 +32,7 @@ import {
   ReceiptLong as ReceiptIcon,
   History as HistoryIcon,
   ManageAccounts as ManageAccountsIcon,
+  TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
@@ -96,6 +97,9 @@ export const AdminLayout = () => {
         { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
         { text: 'Daily takings', icon: <ReceiptIcon />, path: '/admin/reports/daily-takings' },
         { text: 'Who owes money', icon: <MoneyOffIcon />, path: '/admin/reports/who-owes' },
+        ...(isAdmin
+          ? [{ text: 'Revenue', icon: <TrendingUpIcon />, path: '/admin/reports/revenue' }]
+          : []),
       ],
     },
     {

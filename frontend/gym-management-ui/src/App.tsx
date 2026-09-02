@@ -25,7 +25,7 @@ import { PaymentsPage } from '@pages/payments';
 import { SettingsPage } from '@pages/settings';
 import { ChangePasswordPage } from '@pages/account';
 import { ImportMembersPage } from '@pages/import';
-import { AuditTrailPage, DailyTakingsPage, WhoOwesMoneyPage } from '@pages/reports';
+import { AuditTrailPage, DailyTakingsPage, RevenuePage, WhoOwesMoneyPage } from '@pages/reports';
 import { UsersPage } from '@pages/users';
 
 function App() {
@@ -68,6 +68,7 @@ function App() {
     saves reception from opening a screen that would fill with permission errors.
   */}
   <Route path="clients/import" element={<AdminOnly><ImportMembersPage /></AdminOnly>} />
+  <Route path="reports/revenue" element={<AdminOnly><RevenuePage /></AdminOnly>} />
   <Route path="reports/history" element={<AdminOnly><AuditTrailPage /></AdminOnly>} />
   <Route path="packages" element={<AdminOnly><PackagesPage /></AdminOnly>} />
   <Route path="users" element={<AdminOnly><UsersPage /></AdminOnly>} />

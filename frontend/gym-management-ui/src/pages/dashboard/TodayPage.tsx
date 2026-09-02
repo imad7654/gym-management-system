@@ -20,7 +20,6 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dashboardService } from '@services/dashboardService';
 import { contactLinks } from '@lib/contact';
-import { useAuthStore } from '@store/authStore';
 import type { NeedsChasing, Today } from '@app-types/index';
 
 const usd = (amount: number) =>
@@ -100,7 +99,6 @@ const TodayPage = () => {
 
       <Stack spacing={3}>
         <Drawer data={data} />
-        <ThisMonth />
         <CallSheet data={data} />
         <Owing data={data} />
       </Stack>
@@ -163,76 +161,6 @@ const Drawer = ({ data }: { data: Today }) => (
     </Paper>
   </Stack>
 );
-
-/**
- * How the month is going. Only the owner sees it.
- *
- * Month-to-date is revenue history, which is the one thing reception is deliberately not
- * shown, so this fetches separately from an admin-only endpoint rather than riding along
- * on the shared Today call.
- *
- * The headline is the month so far, compared against the same day of last month. Comparing
- * against last month's *total* would mean that on the 3rd every month looks 90% down, and
- * a figure that is alarming by construction gets ignored within a week.
- */
-const ThisMonth = () => {
-  const isAdmin = useAuthStore((state) => state.isAdmin)();
-
-  const { data } = useQuery({
-    queryKey: ['dashboard', 'this-month'],
-    queryFn: () => dashboardService.getMonthSoFar(),
-    enabled: isAdmin,
-  });
-
-  if (!isAdmin || !data) return null;
-
-  const difference = data.thisMonthUsd - data.samePointLastMonthUsd;
-  const ahead = difference >= 0;
-
-  return (
-    <Paper sx={{ p: 3 }}>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="baseline"
-        flexWrap="wrap"
-        sx={{ mb: 2 }}
-      >
-        <Typography variant="h6">This month</Typography>
-        <Typography variant="caption" color="text.secondary">
-          Day {data.dayOfMonth}
-        </Typography>
-      </Stack>
-
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} alignItems="baseline">
-        <Box>
-          <Typography variant="h3" sx={{ fontWeight: 700 }}>
-            {usd(data.thisMonthUsd)}
-          </Typography>
-          <Chip
-            size="small"
-            color={ahead ? 'success' : 'warning'}
-            variant="outlined"
-            label={`${ahead ? 'Ahead by' : 'Behind by'} ${usd(Math.abs(difference))}`}
-          />
-        </Box>
-
-        <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-
-        <Stack spacing={0.5} sx={{ minWidth: 220 }}>
-          <Row
-            label="Same point last month"
-            value={usd(data.samePointLastMonthUsd)}
-          />
-          <Row label="All of last month" value={usd(data.lastMonthTotalUsd)} />
-          <Row label="Members who can train" value={`${data.activeMembers}`} />
-          {/* Context, not a target - it only ever goes up. Kept small for that reason. */}
-          <Row label="Taken all time" value={usd(data.allTimeUsd)} />
-        </Stack>
-      </Stack>
-    </Paper>
-  );
-};
 
 /**
  * The people worth ringing this morning, with the phone right there.

@@ -734,3 +734,53 @@ export interface MonthSoFar {
   allTimeUsd: number;
   activeMembers: number;
 }
+
+// ----------------------------------------------------------------- revenue trend
+
+/** One month on the revenue chart. Money is counted as cash in, when it was taken. */
+export interface RevenueMonth {
+  year: number;
+  month: number;
+  /** "Mar 2026" — built server-side so every screen names the month the same way. */
+  label: string;
+  totalUsd: number;
+  /** Cash that went into the drawer, USD and converted LBP together. */
+  drawerUsd: number;
+  whishUsd: number;
+  otherUsd: number;
+  paymentCount: number;
+  reversalCount: number;
+  reversalsUsd: number;
+  /** Members whose membership covered the end of that month, or today for the month in progress. */
+  activeMembers: number;
+  /** True for the month still being lived through — its bar is not comparable yet. */
+  inProgress: boolean;
+}
+
+export interface RevenueTrend {
+  months: RevenueMonth[];
+  totalUsd: number;
+  averageMonthUsd: number;
+  bestMonthLabel?: string | null;
+  bestMonthUsd: number;
+}
+
+/** One month opened up: the same split the daily takings report shows. */
+export interface RevenueMonthDetail {
+  year: number;
+  month: number;
+  label: string;
+  totalUsd: number;
+  drawerUsd: number;
+  cashUsd: number;
+  cashLbpInUsd: number;
+  cashLbpReceived: number;
+  whishUsd: number;
+  otherUsd: number;
+  paymentCount: number;
+  reversalCount: number;
+  reversalsUsd: number;
+  /** Payments that actually moved a membership forward. */
+  renewalCount: number;
+  payments: TakingsPayment[];
+}
