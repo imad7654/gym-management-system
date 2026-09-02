@@ -1,615 +1,463 @@
-# 🐻 The Fit Bear Gym - Management System
+# 🐻 The Fit Bear Gym — Management System
 
-A comprehensive gym management system built with modern web technologies, featuring client management, membership packages, payment tracking, and a beautiful green-themed user interface.
+A gym management system built to actually run a small gym: members, packages, money taken
+at the desk, and the reports an owner checks the business against. .NET 8 Web API with a
+React 18 front end, over MySQL.
 
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![React](https://img.shields.io/badge/React-18-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6)
 
-## 📋 Table of Contents
+## 📋 Contents
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Running the Application](#running-the-application)
-- [Default Credentials](#default-credentials)
-- [Architecture](#architecture)
-- [API Documentation](#api-documentation)
-- [Contributing](#contributing)
-- [License](#license)
+- [What it does](#-what-it-does)
+- [Tech stack](#-tech-stack)
+- [Getting it running](#-getting-it-running)
+- [Signing in](#-signing-in)
+- [Configuration](#-configuration)
+- [Project structure](#-project-structure)
+- [API](#-api)
+- [Architecture](#-architecture)
+- [Testing](#-testing)
+- [Building for production](#-building-for-production)
+- [Troubleshooting](#-troubleshooting)
+- [License](#-license)
 
-## ✨ Features
+## ✨ What it does
 
-### 🏠 Public Features
-- Beautiful homepage with gym branding
-- Custom bear mascot illustration
-- Motivational quotes wall
-- Membership packages display
-- Responsive design for all devices
+### Who signs in
 
-### 👨‍💼 Admin Features
+Three kinds of account, and the split between them is the point rather than a formality.
 
-#### Client Management
-- ✅ Create, read, update, and delete clients
-- ✅ Track personal information, emergency contacts
-- ✅ Membership status tracking (Active, Expired, Pending)
-- ✅ Payment status monitoring (Paid, Pending, Overdue)
-- ✅ Advanced search and filtering
-- ✅ Pagination support
-- ✅ Soft delete (clients marked inactive, never permanently deleted)
+| | Can | Cannot |
+|---|---|---|
+| **Owner** (Admin) | Everything | — |
+| **Reception** (Staff) | Find a member, take a payment, renew, add a member, freeze and unfreeze, work the call sheet, see today's takings and who owes | Reverse a payment, see revenue history, delete a member, read the audit trail, change prices, manage accounts, set the exchange rate, import members |
+| **Member** (Client) | Their own membership, days remaining, package and payment history | Anything about anybody else |
 
-#### Package Management
-- ✅ Create and manage membership packages
-- ✅ Duration-based memberships (days)
-- ✅ Custom pricing
-- ✅ Active/inactive package control
-- ✅ Display order customization
+Reception adds money and never removes it. Payments are append-only, so a desk that cannot
+reverse structurally cannot make money disappear from the till — which is most of the
+reason the owner can check this system against the drawer at all.
 
-#### Dashboard & Analytics
-- ✅ Real-time statistics
-- ✅ Active client tracking
-- ✅ Revenue analytics (today, this month, total)
-- ✅ Expiring membership alerts
-- ✅ Payment status overview
+### The desk
 
-#### Authentication & Security
-- ✅ JWT-based authentication
-- ✅ Role-based access control (Admin, User roles)
-- ✅ Secure password hashing (BCrypt)
-- ✅ Refresh token mechanism
-- ✅ Protected routes
+- Members with search that matches a phone number however it is written
+- One page per member: status, days remaining, tap-to-call and WhatsApp, renew, freeze
+- Payments in USD or LBP, cash or Whish Money, with the day's rate
+- **Part payments** — money short of the package price is recorded, credited to the member,
+  and extends the membership only once the total reaches the price
+- **Refunds are corrections, not deletions** — a reversal is a second row pointing at the
+  original, so the history of what happened is never rewritten
+- Import an existing member list from a spreadsheet
 
-### 🎨 Design Features
-- Green-themed UI matching gym branding
-- Material Design components
-- Smooth animations and transitions
-- Mobile-first responsive design
-- Custom SVG illustrations
-- Intuitive navigation
+### The owner
 
-## 🛠️ Tech Stack
+- **Today** — what should be in the drawer, who to ring, who owes money
+- **Daily takings** — split into cash and Whish, so the drawer can be counted against it
+- **Revenue** — month by month, with member count alongside, and any month opened up
+- **Who owes money** — part-paid members, longest outstanding first
+- **History** — an audit trail of who did what
+- Members, packages, exchange rate, and who can sign in
 
-### Backend
-- **Framework:** ASP.NET Core 8.0 Web API
-- **Architecture:** Clean Architecture
-  - Domain Layer (Entities, Enums)
-  - Application Layer (DTOs, Business Logic)
-  - Infrastructure Layer (Data Access, Repositories)
-  - API Layer (Controllers, Middleware)
-- **Database:** MySQL 8.0
-- **ORM:** Entity Framework Core 8.0
-- **Authentication:** JWT Bearer Tokens with Refresh Tokens
-- **Password Hashing:** BCrypt.Net
-- **Documentation:** Swagger/OpenAPI
-- **CORS:** Configured for frontend integration
+### Members
 
-### Frontend
-- **Framework:** React 18 with TypeScript
-- **Build Tool:** Vite 5
-- **UI Library:** Material-UI (MUI) v5
-- **State Management:**
-  - Zustand (Auth state)
-  - TanStack Query / React Query (Server state)
-- **Routing:** React Router v6 with protected routes
-- **HTTP Client:** Axios with interceptors
-- **Styling:** CSS-in-JS (MUI's sx prop)
-- **Icons:** Material Icons
-- **Form Handling:** Controlled components
+Members claim an account by matching the phone number and surname the gym already has —
+never free sign-up, so a stranger cannot appear in the member list. A lapsed member can
+still sign in, and is told how long ago their membership ended, because they are exactly
+the person the gym wants back.
 
-### Development Tools
-- **Version Control:** Git
-- **Package Managers:** NuGet (backend), npm (frontend)
-- **IDE:** Visual Studio Code / Visual Studio
-- **API Testing:** Swagger UI
-- **Hot Reload:** dotnet watch (backend), Vite HMR (frontend)
+## 🛠️ Tech stack
 
-## 📁 Project Structure
+**Backend** — ASP.NET Core 8.0 Web API, Clean Architecture (Domain / Application /
+Infrastructure / API), Entity Framework Core 8, MySQL 8, JWT with refresh tokens, BCrypt,
+FluentValidation, Serilog, MailKit, Swagger.
 
-```
-gym-app/
-├── backend/
-│   └── GymManagement/
-│       ├── GymManagement.sln
-│       └── src/
-│           ├── GymManagement.Domain/
-│           │   ├── Entities/          # Client, Package, Payment, etc.
-│           │   ├── Enums/             # Gender, MembershipStatus, etc.
-│           │   └── Interfaces/        # Repository interfaces
-│           │
-│           ├── GymManagement.Application/
-│           │   ├── DTOs/              # Request/Response models
-│           │   ├── Services/          # Business logic
-│           │   └── Interfaces/        # Service interfaces
-│           │
-│           ├── GymManagement.Infrastructure/
-│           │   ├── Data/              # DbContext, Configurations
-│           │   ├── Repositories/      # Repository implementations
-│           │   └── Migrations/        # EF Core migrations
-│           │
-│           └── GymManagement.Api/
-│               ├── Controllers/       # API endpoints
-│               ├── Middleware/        # Authentication, Error handling
-│               └── Program.cs         # App configuration
-│
-├── frontend/
-│   └── gym-management-ui/
-│       ├── src/
-│       │   ├── assets/
-│       │   │   └── illustrations/     # BearLifting.tsx (SVG)
-│       │   │
-│       │   ├── components/
-│       │   │   ├── clients/           # ClientFormDialog, DeleteClientDialog
-│       │   │   ├── home/              # MotivationalQuoteCard, PackageCard
-│       │   │   └── layout/            # AdminLayout
-│       │   │
-│       │   ├── constants/
-│       │   │   └── motivationalQuotes.ts
-│       │   │
-│       │   ├── lib/
-│       │   │   └── theme.ts           # MUI green theme
-│       │   │
-│       │   ├── pages/
-│       │   │   ├── auth/              # LoginPage
-│       │   │   ├── clients/           # ClientsPage
-│       │   │   ├── dashboard/         # DashboardPage
-│       │   │   ├── home/              # HomePage
-│       │   │   └── packages/          # PackagesPage
-│       │   │
-│       │   ├── routes/
-│       │   │   ├── ProtectedRoute.tsx
-│       │   │   └── RoleBasedRoute.tsx
-│       │   │
-│       │   ├── services/
-│       │   │   ├── api.ts             # Axios instance
-│       │   │   ├── authService.ts
-│       │   │   ├── clientService.ts
-│       │   │   └── packageService.ts
-│       │   │
-│       │   ├── store/
-│       │   │   └── authStore.ts       # Zustand auth store
-│       │   │
-│       │   ├── types/
-│       │   │   └── index.ts           # TypeScript types
-│       │   │
-│       │   ├── App.tsx                # Root component
-│       │   └── main.tsx               # Entry point
-│       │
-│       ├── package.json
-│       ├── tsconfig.json
-│       └── vite.config.ts
-│
-├── .gitignore
-├── LICENSE
-└── README.md
-```
+**Frontend** — React 18, TypeScript, Vite 5, Material-UI v5, TanStack Query for server
+state, Zustand for auth, React Router v6, Axios, Recharts.
 
-## 📦 Prerequisites
+## 🚀 Getting it running
 
-Before you begin, ensure you have the following installed:
+### Prerequisites
 
-- **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
-- **.NET 8 SDK** - [Download](https://dotnet.microsoft.com/download/dotnet/8.0)
-- **MySQL 8.0** - [Download](https://dev.mysql.com/downloads/mysql/)
-- **Git** - [Download](https://git-scm.com/downloads)
+| | |
+|---|---|
+| **.NET SDK 8.0 or later** | [Download](https://dotnet.microsoft.com/download) — the projects target `net8.0`; a newer SDK builds them fine |
+| **Node.js 18+** | [Download](https://nodejs.org/) |
+| **Docker Desktop** | [Download](https://www.docker.com/products/docker-desktop/) — runs MySQL, so you do not have to install it |
+| **Git** | [Download](https://git-scm.com/downloads) |
 
-### Verify Installation
+> **Windows: clone into a short path.** Some files in this repository have paths around 125
+> characters. Cloning into a deeply nested folder fails with `Filename too long` unless long
+> paths are enabled:
+>
+> ```bash
+> git config --global core.longpaths true
+> ```
+
+You do not need MySQL installed locally — step 1 runs it in Docker. If you would rather use
+an existing MySQL server, skip step 1 and point the connection string at it instead.
+
+### 1. Clone and start the database
 
 ```bash
-# Check Node.js
-node --version  # Should be v18 or higher
-
-# Check .NET
-dotnet --version  # Should be 8.0.x
-
-# Check MySQL
-mysql --version
-
-# Check Git
-git --version
-```
-
-## 🚀 Installation
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/gym-management-system.git
+git clone https://github.com/imad7654/gym-management-system.git
 cd gym-management-system
 ```
 
-### 2. Database Setup
+Then, **from the repository root**:
 
-1. **Start MySQL Server**
-   - Make sure MySQL is running on your machine
-   - Default port: 3306
+```bash
+cd docker && docker compose up -d
+```
 
-2. **Create Database** (Optional - migrations will create it)
-   ```sql
-   CREATE DATABASE GymManagementDb;
-   ```
+That starts MySQL 8 on **port 3306** with a database called `gymdb` and a user `gymuser`.
 
-3. **Update Connection String**
+> **If port 3306 is already in use** — because you have MySQL installed as a service —
+> create `docker/docker-compose.override.yml` (it is gitignored, so it stays yours):
+>
+> ```yaml
+> services:
+>   mysql:
+>     ports: !override
+>       - "3307:3306"
+> ```
+>
+> The `!override` tag matters: without it Compose *appends* to the port list and still tries
+> to bind 3306. Then use `Port=3307` in the connection string below.
 
-   Edit `backend/GymManagement/src/GymManagement.Api/appsettings.json`:
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Server=localhost;Database=GymManagementDb;User=root;Password=root;"
-     },
-     "Jwt": {
-       "Key": "your-super-secret-key-min-32-characters-long-for-production",
-       "Issuer": "GymManagementApi",
-       "Audience": "GymManagementClient",
-       "AccessTokenExpirationMinutes": 15,
-       "RefreshTokenExpirationDays": 7
-     }
-   }
-   ```
+### 2. Set the secrets
 
-   ⚠️ **Security Note:** Change the JWT Key in production!
+**Do this before anything else touches the database.** There are no secrets in this
+repository and no default credentials. The API refuses to start without these, and tells
+you exactly what is missing if you forget.
 
-### 3. Backend Setup
+From the repository root, move into the API project — the three `user-secrets` commands
+after it run from there:
 
 ```bash
 cd backend/GymManagement/src/GymManagement.Api
-
-# Restore NuGet packages
-dotnet restore
-
-# Install EF Core CLI tools (if not already installed)
-dotnet tool install --global dotnet-ef
-
-# Apply database migrations (creates tables and seeds admin user)
-dotnet ef database update --project ../GymManagement.Infrastructure
-
-# You should see: "Done. Applied X migrations."
 ```
 
-### 4. Frontend Setup
-
 ```bash
-cd frontend/gym-management-ui
-
-# Install npm packages
-npm install
-
-# This will install React, MUI, TanStack Query, and all dependencies
+dotnet user-secrets init
 ```
 
-## 🏃 Running the Application
-
-### Option 1: VS Code Split Terminal (Recommended)
-
-This method keeps both servers running side-by-side:
-
-1. **Open VS Code** in the project root
-2. **Open Terminal** (`` Ctrl + ` ``)
-3. **Split Terminal** (`Ctrl + Shift + 5`)
-
-**Left Terminal - Backend:**
 ```bash
-cd backend/GymManagement/src/GymManagement.Api
-dotnet run --urls "http://localhost:5001"
-```
-
-**Right Terminal - Frontend:**
-```bash
-cd frontend/gym-management-ui
-npm run dev
-```
-
-### Option 2: Separate Terminal Windows
-
-**Terminal 1 - Backend:**
-```bash
-cd backend/GymManagement/src/GymManagement.Api
-dotnet run --urls "http://localhost:5001"
-```
-
-Wait for: `Now listening on: http://localhost:5001`
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend/gym-management-ui
-npm run dev
-```
-
-Wait for: `Local: http://localhost:5173/`
-
-### Access the Application
-
-- **Frontend (User Interface):** http://localhost:5173
-- **Backend API:** http://localhost:5001
-- **Swagger Documentation:** http://localhost:5001/swagger
-
-### Stopping the Servers
-
-- Press `Ctrl + C` in each terminal
-- Or close the terminal windows
-
-## 🔐 Secrets and the admin account
-
-There are no default credentials, and no secrets in this repository. The API refuses
-to start if a required secret is missing, too short, or set to a value that was once
-committed here.
-
-### Local development
-
-Secrets live in `dotnet user-secrets`, which stores them outside the repository:
-
-```bash
-cd backend/GymManagement/src/GymManagement.Api
 dotnet user-secrets set "Jwt:SecretKey" "$(openssl rand -base64 48)"
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Port=3306;Database=gymdb;User=gymuser;Password=<your password>;"
 ```
 
-On first run an admin account is created and its randomly generated password is
-printed to the console **once**. Copy it then — it is not stored anywhere readable.
-If you miss it, delete the user row and restart to get a new one.
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Port=3306;Database=gymdb;User=gymuser;Password=gympass123;"
+```
 
-To choose the credentials yourself instead:
+> On Windows without `openssl`, any 32+ character random string works. The password above is
+> the one in the tracked `docker-compose.yml`, so it is fine for a local container and must
+> never be used for a real server — see [Configuration](#-configuration).
+
+### 3. Start the API
+
+From the repository root:
+
+```bash
+cd backend/GymManagement && dotnet run --project src/GymManagement.Api/GymManagement.Api.csproj
+```
+
+The schema is migrated on startup — no separate migration step, and no need to run
+`dotnet ef database update` by hand. In development it is also seeded with a demo gym of 30
+members and four months of payments, so every screen has something to show.
+
+Wait for `Now listening on: http://localhost:5001`, and **copy the admin password it prints**
+— see [Signing in](#-signing-in).
+
+### 4. Start the front end
+
+From the repository root, in a second terminal:
+
+```bash
+cd frontend/gym-management-ui && npm install && npm run dev
+```
+
+| | |
+|---|---|
+| App | http://localhost:5173 |
+| API | http://localhost:5001 |
+| Swagger | http://localhost:5001/swagger |
+
+> CORS allows `http://localhost:5173` only, so use that port rather than starting the dev
+> server somewhere else.
+
+## 🔐 Signing in
+
+**There are no default credentials.** On first run against an empty database an
+administrator is created and its randomly generated password is **printed to the API console
+once**:
+
+```
+=====================================================================
+ ADMIN ACCOUNT CREATED - this password is shown once and not saved
+   email:    admin@gym.local
+   password: ...
+=====================================================================
+```
+
+Copy it then — it is hashed, and nothing can read it back. If you miss it, either use the
+**Forgot your password?** link (needs email configured), or delete the user row and restart
+to get a fresh one.
+
+To choose the credentials yourself instead, set them before the first run:
 
 ```bash
 dotnet user-secrets set "Seed:AdminEmail" "you@example.com"
 dotnet user-secrets set "Seed:AdminPassword" "<a long password>"
 ```
 
-### Production
+## ⚙️ Configuration
 
-Use environment variables, with `__` for the nesting:
+### Secrets
 
-| Variable | Purpose |
-|---|---|
-| `Jwt__SecretKey` | Signs login tokens. At least 32 bytes of random data. |
-| `ConnectionStrings__DefaultConnection` | Database. Use an account that owns only `gymdb`, never `root`. |
-| `Seed__AdminEmail` | First administrator. Required outside development. |
-| `Seed__AdminPassword` | First administrator's password. Required outside development. |
+Secrets never live in a tracked file. Locally they go in `dotnet user-secrets`; in
+production, environment variables with `__` for the nesting.
 
-`Seed:DemoData` controls the sample packages and placeholder gym details. It is on in
-development and off everywhere else.
+| Setting | Purpose | Required |
+|---|---|---|
+| `Jwt:SecretKey` | Signs login tokens. At least 32 bytes of random data. | Always |
+| `ConnectionStrings:DefaultConnection` | Database. Use an account that owns only `gymdb`, never `root`. | Always |
+| `Seed:AdminEmail` | First administrator | Outside development |
+| `Seed:AdminPassword` | First administrator's password | Outside development |
+| `Email:Host` / `Username` / `Password` / `FromAddress` | Sends password reset emails | Outside development |
 
-⚠️ Editing a secret that was already committed does not remove it — the old value stays
-in git history. Always rotate to a genuinely new value rather than correcting the file.
+The API validates these at startup and **refuses to boot** if one is missing, too short, or
+set to a value that was once committed to this repository. In development it warns instead
+of refusing, so a throwaway container is not a blocker.
+
+> ⚠️ Editing a secret that was already committed does not remove it — the old value stays in
+> git history. Rotate to a genuinely new value rather than correcting the file.
+
+### Email
+
+Password reset emails need an SMTP account. For Gmail that means turning on 2-Step
+Verification and generating a **16-character App Password** — Gmail refuses an account's
+ordinary password over SMTP.
+
+```bash
+dotnet user-secrets set "Email:Username" "thegym@gmail.com"
+dotnet user-secrets set "Email:Password" "<16-char app password>"
+dotnet user-secrets set "Email:FromAddress" "thegym@gmail.com"
+```
+
+Without it, **in development** reset links are written to the API console so the flow can
+still be used. **Outside development the API will not start**, deliberately: the page says
+"a link is on its way" whether or not the address exists, so a silently unsent email would
+only be discovered when somebody was already locked out.
+
+### Other settings
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `Gym:TimeZone` | `Asia/Beirut` | Membership dates are calendar dates on the gym's own wall, not UTC |
+| `Seed:DemoData` | `true` in development | The 30-member demo gym. Off everywhere else, and it refuses to run against a database that already has members |
+| `Validation:MinPasswordLength` | 12 | Applies to every way a password is set |
+| `Cors:AllowedOrigins` | `localhost:5173` | Where the front end is served from |
+
+## 📁 Project structure
+
+```
+gym-management-system/
+├── backend/GymManagement/
+│   ├── src/
+│   │   ├── GymManagement.Domain/          Entities, enums, domain rules
+│   │   ├── GymManagement.Application/     DTOs, services, validators
+│   │   ├── GymManagement.Infrastructure/  EF Core, repositories, migrations, SMTP
+│   │   └── GymManagement.Api/             Controllers, middleware, startup checks
+│   └── tests/GymManagement.UnitTests/
+│
+├── frontend/gym-management-ui/src/
+│   ├── pages/
+│   │   ├── home/  login/  register/  password/   Public
+│   │   ├── member/                               A member's own area
+│   │   ├── dashboard/                            Today
+│   │   ├── clients/  import/                     Members
+│   │   ├── payments/  packages/  reports/        Money
+│   │   └── users/  settings/  account/           Setup
+│   ├── components/     Feature components + shared layout
+│   ├── services/       One module per API area
+│   ├── store/          Zustand auth store
+│   ├── routes/         Route guards
+│   ├── lib/            Axios, theme, helpers
+│   └── types/          Shared TypeScript types
+│
+└── docker/docker-compose.yml                     MySQL 8
+```
+
+## 📚 API
+
+Everything is under `/api/v1`. **Admin** is the owner, **Staff** is reception, **Client** is
+a member. Full request and response detail is in Swagger at `/swagger`.
+
+### Auth
+
+| Method | Endpoint | Access | |
+|---|---|---|---|
+| POST | `/auth/login` | Anyone | Returns access + refresh tokens |
+| POST | `/auth/register` | Anyone | Member sign-up, matched to an existing member by phone and surname |
+| POST | `/auth/forgot-password` | Anyone | Emails a reset link. Answers identically whether or not the address exists |
+| POST | `/auth/reset-password` | Anyone | Spends the emailed token. Single use, one hour |
+| POST | `/auth/refresh-token` | Anyone | Rotates the refresh token |
+| POST | `/auth/logout` | Signed in | Revokes the refresh token |
+| GET | `/auth/me` | Signed in | The signed-in account |
+| PUT | `/auth/change-password` | Signed in | Ends every session, this one included |
+
+### A member's own area
+
+| Method | Endpoint | Access | |
+|---|---|---|---|
+| GET | `/me/membership` | Client | Status, days left, package |
+| GET | `/me/payments` | Client | Their own payments |
+
+Resolved from the signed-in user; there is deliberately no id in the URL.
+
+### Members
+
+| Method | Endpoint | Access | |
+|---|---|---|---|
+| GET | `/clients` | Admin, Staff | Paginated, searchable, filterable |
+| GET | `/clients/{id}` · `/summary` · `/payments` · `/outstanding` | Admin, Staff | One member |
+| POST | `/clients` | Admin, Staff | Add |
+| PUT | `/clients/{id}` | Admin, Staff | Edit |
+| POST | `/clients/{id}/suspend` · `/resume` | Admin, Staff | Freeze and unfreeze |
+| GET | `/clients/expiring` | Admin, Staff | Running out soon |
+| GET | `/clients/{id}/account` | Admin, Staff | Whether they have a login |
+| POST | `/clients/{id}/account/reset-password` | Admin, Staff | Set a member's password |
+| DELETE | `/clients/{id}` · POST `/{id}/restore` | **Admin** | Soft delete and undelete |
+| POST | `/clients/import/preview` · `/commit` | **Admin** | Import from a spreadsheet |
+
+### Money
+
+| Method | Endpoint | Access | |
+|---|---|---|---|
+| GET | `/payments` · `/payments/{id}` | Admin, Staff | |
+| POST | `/payments` | Admin, Staff | Take a payment |
+| POST | `/payments/{id}/reverse` | **Admin** | Refund, as a correcting row |
+| GET | `/packages` · `/packages/{id}` | Admin, Staff | |
+| GET | `/packages/active` | Anyone | For the public homepage |
+| POST/PUT/DELETE | `/packages...` | **Admin** | Prices are the owner's |
+| GET | `/exchange-rates/current` | Admin, Staff | Today's LBP rate |
+| PUT | `/exchange-rates/today` | **Admin** | Set it |
+
+### Reports and dashboard
+
+| Method | Endpoint | Access | |
+|---|---|---|---|
+| GET | `/dashboard/today` | Admin, Staff | Drawer, call sheet, who owes |
+| POST | `/dashboard/chased/{clientId}` | Admin, Staff | Mark a member as called |
+| GET | `/dashboard/expiring-memberships` | Admin, Staff | |
+| GET | `/dashboard/stats` · `/this-month` | **Admin** | Revenue figures |
+| GET | `/reports/who-owes` | Admin, Staff | Part-paid members |
+| GET | `/reports/daily-takings` | Admin, Staff | Reception is limited to today |
+| GET | `/reports/revenue` · `/revenue/{year}/{month}` | **Admin** | Month by month |
+| GET | `/reports/audit` | **Admin** | Who did what |
+
+### Accounts and gym details
+
+| Method | Endpoint | Access | |
+|---|---|---|---|
+| GET/POST/PUT/DELETE | `/users...` | **Admin** | Who can sign in |
+| POST | `/users/{id}/reset-password` · `/restore` | **Admin** | |
+| GET | `/gym-info` | Anyone | Name, hours, contact for the homepage |
+| PUT | `/gym-info` | **Admin** | |
 
 ## 🏗️ Architecture
 
-### Clean Architecture Principles
+Dependencies point inward: **API → Infrastructure → Application → Domain**. The Domain layer
+depends on nothing.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      API Layer                           │
-│  • Controllers (REST endpoints)                          │
-│  • Middleware (Auth, Error Handling)                     │
-│  • Dependency Injection Configuration                    │
-└──────────────────┬──────────────────────────────────────┘
-                   │ Depends on ↓
-┌──────────────────▼──────────────────────────────────────┐
-│                Application Layer                         │
-│  • DTOs (Data Transfer Objects)                          │
-│  • Services (Business Logic)                             │
-│  • Interfaces (Service contracts)                        │
-│  • Validation Logic                                      │
-└──────────────────┬──────────────────────────────────────┘
-                   │ Depends on ↓
-┌──────────────────▼──────────────────────────────────────┐
-│              Infrastructure Layer                        │
-│  • DbContext (EF Core)                                   │
-│  • Repositories (Data Access)                            │
-│  • Migrations                                            │
-│  • External Service Implementations                      │
-└──────────────────┬──────────────────────────────────────┘
-                   │ Depends on ↓
-┌──────────────────▼──────────────────────────────────────┐
-│                  Domain Layer                            │
-│  • Entities (Client, Package, Payment, User)             │
-│  • Enums (Gender, MembershipStatus, PaymentStatus)       │
-│  • Domain Logic                                          │
-│  • Repository Interfaces                                 │
-└─────────────────────────────────────────────────────────┘
-        ↑
-        │ No dependencies - Pure business logic
-```
+Third-party format and IO concerns stay out of Application. The member import shows the
+pattern — `IMemberImportFileReader` is declared in Application and implemented with ClosedXML
+in Infrastructure; `IEmailSender` and MailKit work the same way.
 
-### Frontend Architecture
+Four decisions worth knowing before changing anything:
 
-- **Feature-Based Structure:** Components organized by feature (clients, home, layout)
-- **Separation of Concerns:** Services, stores, and components are separate
-- **Type Safety:** TypeScript throughout with centralized type definitions
-- **State Management:**
-  - **Zustand:** Auth state (user, tokens)
-  - **React Query:** Server state (clients, packages) with caching
-- **Clean Components:** Logic separated from presentation
-
-## 📚 API Documentation
-
-### Authentication Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | User login (returns JWT) |
-| POST | `/api/v1/auth/refresh` | Refresh access token |
-
-### Client Endpoints (Protected - Requires Auth)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/clients` | Get paginated clients list |
-| GET | `/api/v1/clients/{id}` | Get client details by ID |
-| POST | `/api/v1/clients` | Create new client |
-| PUT | `/api/v1/clients/{id}` | Update existing client |
-| DELETE | `/api/v1/clients/{id}` | Soft delete client (marks inactive) |
-
-### Package Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/packages` | Get all packages |
-| GET | `/api/v1/packages/active` | Get only active packages (public) |
-| GET | `/api/v1/packages/{id}` | Get package by ID |
-| POST | `/api/v1/packages` | Create new package (admin) |
-| PUT | `/api/v1/packages/{id}` | Update package (admin) |
-| DELETE | `/api/v1/packages/{id}` | Delete package (admin) |
-
-### Dashboard Endpoints (Admin Only)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/dashboard/stats` | Get dashboard statistics |
-| GET | `/api/v1/dashboard/expiring-memberships` | Get expiring memberships list |
-| GET | `/api/v1/dashboard/recent-clients` | Get recently added clients |
-| GET | `/api/v1/dashboard/recent-payments` | Get recent payments |
-
-For complete API documentation with request/response examples, run the backend and visit: **http://localhost:5001/swagger**
-
-## 🎨 Design System
-
-### Color Palette (Green Theme)
-- **Primary Green:** `#2e7d32` - Buttons, links, main actions
-- **Dark Green:** `#1b5e20` - Headers, navigation, accents
-- **Light Green:** `#4caf50` - Hover states, highlights
-- **Secondary Green:** `#66bb6a` - Secondary actions
-- **White:** `#ffffff` - Backgrounds, cards
-- **Gray:** `#f5f5f5` - Secondary backgrounds
-
-### Typography
-- **Font Family:** Roboto, Helvetica, Arial, sans-serif
-- **Headings:** Bold (600-900 weight)
-- **Body Text:** Regular (400 weight)
-- **Button Text:** Medium (500 weight)
-
-### Components
-- **Cards:** Elevated with subtle shadows
-- **Buttons:** Rounded corners (8px), uppercase text
-- **Forms:** Clean inputs with validation
-- **Tables:** Striped rows, hover effects
-- **Dialogs:** Modal with backdrop blur
-
-## 🔒 Security Features
-
-- ✅ **JWT Authentication** with refresh tokens
-- ✅ **Password Hashing** using BCrypt
-- ✅ **Role-Based Access Control** (Admin, User)
-- ✅ **Protected API Routes** - Unauthorized returns 401
-- ✅ **CORS Configuration** - Prevents unauthorized origins
-- ✅ **SQL Injection Protection** - EF Core parameterized queries
-- ✅ **XSS Protection** - React's automatic escaping
-- ✅ **Soft Delete** - Data never permanently lost
+- **Payment rows are append-only.** A mistake is corrected by adding a row, never by editing
+  or deleting one. If a payment could be quietly changed afterwards, the owner could not use
+  this system to check the till against the drawer.
+- **Membership status is never stored.** It is computed from the end date every time it is
+  asked for, in C# and in SQL. It used to be a column refreshed by a nightly job that was
+  never written, so expired members read `Active` forever.
+- **Membership dates are calendar dates on the gym's wall**, in `Gym:TimeZone`; payment
+  timestamps are UTC instants. Mixing the two expires memberships a day early.
+- **Money is always summed in USD.** What was physically handed over, its currency and the
+  rate on the day are recorded separately and never recalculated.
 
 ## 🧪 Testing
 
-### Backend Tests
 ```bash
-cd backend/GymManagement
-dotnet test
+cd backend/GymManagement && dotnet test
 ```
 
-### Frontend Tests
+236 tests, written from the failure each one prevents rather than from the method it calls.
+
+The front end has no test runner yet; it is checked with the type checker and linter:
+
 ```bash
-cd frontend/gym-management-ui
-npm run test
+cd frontend/gym-management-ui && npm run build && npm run lint
 ```
 
-## 🚢 Building for Production
+## 🚢 Building for production
 
-### Backend Build
 ```bash
-cd backend/GymManagement/src/GymManagement.Api
-dotnet publish -c Release -o ./publish
+cd backend/GymManagement/src/GymManagement.Api && dotnet publish -c Release -o ./publish
 ```
 
-Output will be in `./publish` folder ready for deployment.
-
-### Frontend Build
 ```bash
-cd frontend/gym-management-ui
-npm run build
+cd frontend/gym-management-ui && npm run build
 ```
 
-Output will be in `./dist` folder. Deploy to:
-- Vercel
-- Netlify
-- AWS S3 + CloudFront
-- Azure Static Web Apps
+Before deploying, set every value marked *Outside development* in
+[Configuration](#-configuration). The API will refuse to start without them, which is
+deliberate — it is better than discovering a missing signing key in production.
 
 ## 🐛 Troubleshooting
 
-### MySQL Connection Issues
-```bash
-# Check if MySQL is running
-# Windows: Services → MySQL80
-# Mac: System Preferences → MySQL
-# Linux: sudo systemctl status mysql
+**The API exits immediately with "required secrets are missing or unsafe"**
+Working as intended — it lists exactly what to set. See [step 2](#2-set-the-secrets).
 
-# Test connection
-mysql -u root -p
+**`Filename too long` when cloning**
+Windows path limit. `git config --global core.longpaths true`, or clone somewhere shallower.
+
+**Port 3306 already allocated**
+You have MySQL running already. Use the override file in
+[step 1](#1-clone-and-start-the-database), or point the connection string at your existing
+server.
+
+**"Unable to connect to any of the specified MySQL hosts"**
+The container is not up yet. `docker compose ps` from `docker/`, and check the port in the
+connection string matches the one Compose published.
+
+**A page loads but its data does not**
+Check the API console for `ERR` lines after using the page. Endpoints that answer `curl`
+correctly can still fail on real data; the browser console and the API log together beat
+either alone.
+
+**CORS errors**
+Use `http://localhost:5173`. Only that origin is allowed, so a dev server started on another
+port will be refused.
+
+**Starting over with a clean database**
+
+```bash
+docker exec gym-mysql mysql -uroot -proot123 -e "DROP DATABASE gymdb; CREATE DATABASE gymdb;"
 ```
 
-### Port Already in Use
-```bash
-# Backend (5001)
-# Windows: netstat -ano | findstr :5001
-# Mac/Linux: lsof -i :5001
-
-# Frontend (5173)
-# Windows: netstat -ano | findstr :5173
-# Mac/Linux: lsof -i :5173
-```
-
-### Migration Errors
-```bash
-# Drop and recreate database
-cd backend/GymManagement/src/GymManagement.Api
-dotnet ef database drop --project ../GymManagement.Infrastructure --force
-dotnet ef database update --project ../GymManagement.Infrastructure
-```
-
-### CORS Errors
-- Ensure frontend is running on `http://localhost:5173`
-- Check `AllowedOrigins` in `Program.cs`
-- Clear browser cache
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/AmazingFeature`
-3. Commit your changes: `git commit -m 'Add some AmazingFeature'`
-4. Push to the branch: `git push origin feature/AmazingFeature`
-5. Open a Pull Request
-
-### Coding Standards
-- **Backend:** Follow C# conventions, use async/await
-- **Frontend:** Use TypeScript strict mode, functional components
-- **Commits:** Use conventional commits (feat:, fix:, docs:)
+Restart the API — it migrates and reseeds, and prints a new admin password.
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
-## 👨‍💻 Author
+## 👤 Author
 
-**Imad Abi Ramia**
-- GitHub: [@YOUR_USERNAME](https://github.com/YOUR_USERNAME)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/your-profile)
-
-## 🙏 Acknowledgments
-
-- Material-UI for the beautiful component library
-- The ASP.NET Core team for an excellent framework
-- The React team for an amazing frontend library
-- All open-source contributors
-
-## 📞 Support
-
-If you have any questions or issues:
-1. Check the [Troubleshooting](#troubleshooting) section
-2. Review [Swagger Documentation](http://localhost:5001/swagger)
-3. Open an [Issue](https://github.com/YOUR_USERNAME/gym-management-system/issues)
+_Add your name, GitHub and contact here._
 
 ---
 
