@@ -11,6 +11,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  ListSubheader,
   Menu,
   MenuItem,
   Toolbar,
@@ -67,26 +68,48 @@ export const AdminLayout = () => {
   // decides what is worth showing, not what is allowed.
   const isAdmin = useAuthStore((state) => state.isAdmin)();
 
-  const menuItems = [
-    ...(isAdmin
-      ? [{ text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' }]
-      : []),
-    { text: 'Clients', icon: <PeopleIcon />, path: '/admin/clients' },
-    ...(isAdmin
-      ? [{ text: 'Import Members', icon: <UploadFileIcon />, path: '/admin/clients/import' }]
-      : []),
-    { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
-    { text: 'Daily Takings', icon: <ReceiptIcon />, path: '/admin/reports/daily-takings' },
-    { text: 'Who Owes Money', icon: <MoneyOffIcon />, path: '/admin/reports/who-owes' },
-    ...(isAdmin
-      ? [
-          { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
-          { text: 'History', icon: <HistoryIcon />, path: '/admin/reports/history' },
-          { text: 'Who Can Sign In', icon: <ManageAccountsIcon />, path: '/admin/users' },
-          { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
-        ]
-      : []),
-  ];
+  // Grouped by what the person is doing, not by which table it reads.
+  //
+  // The flat list had Daily Takings, Who Owes Money and Payments sitting between Clients
+  // and Packages, so finding anything meant reading all ten labels. Four short groups mean
+  // the answer to "where do I look" is usually the heading, not the item.
+  //
+  // Empty groups are dropped rather than rendered as a bare heading, which is what keeps
+  // reception's menu from ending in a "Setup" label with nothing under it.
+  const menuGroups = [
+    {
+      heading: 'Today',
+      items: [{ text: 'Today', icon: <DashboardIcon />, path: '/admin/today' }],
+    },
+    {
+      heading: 'Members',
+      items: [
+        { text: 'All members', icon: <PeopleIcon />, path: '/admin/clients' },
+        ...(isAdmin
+          ? [{ text: 'Import members', icon: <UploadFileIcon />, path: '/admin/clients/import' }]
+          : []),
+      ],
+    },
+    {
+      heading: 'Money',
+      items: [
+        { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
+        { text: 'Daily takings', icon: <ReceiptIcon />, path: '/admin/reports/daily-takings' },
+        { text: 'Who owes money', icon: <MoneyOffIcon />, path: '/admin/reports/who-owes' },
+      ],
+    },
+    {
+      heading: 'Setup',
+      items: isAdmin
+        ? [
+            { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
+            { text: 'History', icon: <HistoryIcon />, path: '/admin/reports/history' },
+            { text: 'Who can sign in', icon: <ManageAccountsIcon />, path: '/admin/users' },
+            { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
+          ]
+        : [],
+    },
+  ].filter((group) => group.items.length > 0);
 
 
   const drawer = (
@@ -96,35 +119,56 @@ export const AdminLayout = () => {
           🐻 Fit Bear Gym
         </Typography>
       </Toolbar>
-      <List>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              selected={location.pathname === item.path}
-              // Closes the drawer as well as navigating. On a phone the temporary drawer
-              // covers the page it just opened, so leaving it up hides the result of the tap.
-              onClick={() => {
-                setMobileOpen(false);
-                navigate(item.path);
-              }}
+      {menuGroups.map((group) => (
+        <List
+          key={group.heading}
+          dense
+          subheader={
+            <ListSubheader
+              disableSticky
               sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(46, 125, 50, 0.12)',
-                  borderRight: '4px solid #2e7d32',
-                  '&:hover': {
-                    backgroundColor: 'rgba(46, 125, 50, 0.2)',
-                  },
-                },
+                bgcolor: 'transparent',
+                lineHeight: 2.2,
+                fontSize: '0.7rem',
+                letterSpacing: '0.09em',
+                textTransform: 'uppercase',
               }}
             >
-              <ListItemIcon sx={{ color: location.pathname === item.path ? '#2e7d32' : 'inherit' }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+              {group.heading}
+            </ListSubheader>
+          }
+        >
+          {group.items.map((item) => (
+            <ListItem key={item.text} disablePadding>
+              <ListItemButton
+                selected={location.pathname === item.path}
+                // Closes the drawer as well as navigating. On a phone the temporary drawer
+                // covers the page it just opened, so leaving it up hides the result of the tap.
+                onClick={() => {
+                  setMobileOpen(false);
+                  navigate(item.path);
+                }}
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(46, 125, 50, 0.12)',
+                    borderRight: '4px solid #2e7d32',
+                    '&:hover': {
+                      backgroundColor: 'rgba(46, 125, 50, 0.2)',
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon
+                  sx={{ color: location.pathname === item.path ? '#2e7d32' : 'inherit' }}
+                >
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      ))}
     </Box>
   );
 

@@ -49,7 +49,10 @@ public class RevenueAfterReversalTests : IDisposable
         var clock = new FixedClock(Today);
         _unitOfWork = new UnitOfWork(_context);
         _payments = new PaymentService(_unitOfWork, clock, new AuditService(_unitOfWork, clock));
-        _dashboard = new DashboardService(_unitOfWork, clock);
+        // The real report service, not a stand-in: these tests are about revenue arithmetic
+        // agreeing across screens, and swapping in a fake would remove the thing they check.
+        _dashboard = new DashboardService(
+            _unitOfWork, clock, new ReportService(_unitOfWork, clock));
     }
 
     public void Dispose() => _unitOfWork.Dispose();

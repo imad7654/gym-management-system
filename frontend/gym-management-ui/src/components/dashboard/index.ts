@@ -1,1 +1,0 @@
-export { ExpiringMembershipsCard } from './ExpiringMembershipsCard';

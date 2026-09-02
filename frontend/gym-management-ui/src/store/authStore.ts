@@ -62,11 +62,9 @@ export const useAuthStore = create<AuthState>()(
       homePath: () => {
         // Admin is checked first: an account holding both roles is staff, and sending
         // them to the member area would hide every screen they actually work in.
-        if (get().isAdmin()) return '/admin/dashboard';
+        if (get().isAdmin()) return '/admin/today';
 
-        // Reception shares the admin panel, minus the screens it is refused. It lands on
-        // the member list rather than the dashboard, whose figures are the owner's.
-        if (get().isStaff()) return '/admin/clients';
+        if (get().isStaff()) return '/admin/today';
         if (get().isMember()) return '/member';
         return '/';
       },

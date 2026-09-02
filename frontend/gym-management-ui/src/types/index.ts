@@ -669,3 +669,57 @@ export interface ResetPasswordWithTokenRequest {
   newPassword: string;
   confirmPassword: string;
 }
+
+// ------------------------------------------------------------- the owner's morning
+
+/** One member on the call sheet. */
+export interface NeedsChasing {
+  clientId: number;
+  clientName: string;
+  phoneNumber: string;
+  /** Digits only, for the tel: and WhatsApp links. */
+  phoneDigits?: string | null;
+  packageName?: string | null;
+  membershipEndDate?: string | null;
+  /** Negative once the membership has run out. */
+  daysRemaining?: number | null;
+  membershipStatus: MembershipStatusString;
+  /** True when somebody already rang them today, so nobody rings twice. */
+  calledToday: boolean;
+  lastChasedAt?: string | null;
+}
+
+/** A member who part-paid, trimmed to what the morning needs. */
+export interface OwesSummary {
+  clientId: number;
+  clientName: string;
+  amountOwed: number;
+  daysOutstanding: number;
+}
+
+/** The first screen of the day: the drawer, the call sheet, and who owes. */
+export interface Today {
+  date: string;
+
+  cashUsd: number;
+  cashLbpInUsd: number;
+  cashLbpReceived: number;
+  /** What should physically be in the drawer. Whish is deliberately not in it. */
+  drawerTotalUsd: number;
+  /** Money that arrived by phone. Real income, never in the drawer. */
+  whishUsd: number;
+  otherUsd: number;
+  totalUsd: number;
+  paymentCount: number;
+  reversalCount: number;
+  reversalsUsd: number;
+  /** Payments today that actually moved a membership forward. */
+  renewalsToday: number;
+
+  needsChasing: NeedsChasing[];
+  calledToday: number;
+
+  totalOwed: number;
+  owesCount: number;
+  owes: OwesSummary[];
+}

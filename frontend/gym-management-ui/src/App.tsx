@@ -18,7 +18,7 @@ import { LoginPage } from '@pages/login';
 import { RegisterPage } from '@pages/register';
 import { MyMembershipPage } from '@pages/member';
 import { ForgotPasswordPage, ResetPasswordPage } from '@pages/password';
-import { DashboardPage } from '@pages/dashboard';
+import { TodayPage } from '@pages/dashboard';
 import { ClientsPage, MemberPage } from '@pages/clients';
 import { PackagesPage } from '@pages/packages';
 import { PaymentsPage } from '@pages/payments';
@@ -55,6 +55,7 @@ function App() {
   }
 >
   {/* The desk. Reception and the owner both work here. */}
+  <Route path="today" element={<TodayPage />} />
   <Route path="clients" element={<ClientsPage />} />
   <Route path="clients/:id" element={<MemberPage />} />
   <Route path="payments" element={<PaymentsPage />} />
@@ -66,7 +67,6 @@ function App() {
     The owner's. Each of these is also refused by its own endpoints - the guard here only
     saves reception from opening a screen that would fill with permission errors.
   */}
-  <Route path="dashboard" element={<AdminOnly><DashboardPage /></AdminOnly>} />
   <Route path="clients/import" element={<AdminOnly><ImportMembersPage /></AdminOnly>} />
   <Route path="reports/history" element={<AdminOnly><AuditTrailPage /></AdminOnly>} />
   <Route path="packages" element={<AdminOnly><PackagesPage /></AdminOnly>} />

@@ -58,6 +58,20 @@ public class Client : AuditableEntity, ISoftDeletable
     /// </summary>
     public int? UserId { get; set; }
 
+    /// <summary>
+    /// When somebody last rang this member about renewing, or null if nobody has.
+    ///
+    /// A UTC instant rather than a flag, because the question is always "have we called
+    /// them <em>today</em>" - a boolean would have to be reset by a nightly job, and the
+    /// last job this system relied on was never written and left every membership reading
+    /// Active forever.
+    ///
+    /// Deliberately not cleared when they renew. The chase list drops them once their dates
+    /// move, so a stale value simply stops being asked about, and keeping it means the next
+    /// time they lapse the desk can see they were called last time too.
+    /// </summary>
+    public DateTime? LastChasedAt { get; set; }
+
     // Soft Delete
     public bool IsActive { get; set; } = true;
     public DateTime? DeletedAt { get; set; }
