@@ -16,6 +16,7 @@ import { HomePage } from '@pages/home';
 import { LoginPage } from '@pages/login';
 import { RegisterPage } from '@pages/register';
 import { MyMembershipPage } from '@pages/member';
+import { ForgotPasswordPage, ResetPasswordPage } from '@pages/password';
 import { DashboardPage } from '@pages/dashboard';
 import { ClientsPage, MemberPage } from '@pages/clients';
 import { PackagesPage } from '@pages/packages';
@@ -38,6 +39,8 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Protected admin routes */}
 <Route

@@ -43,6 +43,7 @@ public static class SecurityStartupChecks
         ValidateJwtKey(configuration, problems);
         ValidateConnectionString(configuration, environment, problems, warnings);
         ValidateSeedAdmin(configuration, environment, problems);
+        ValidateEmail(configuration, environment, problems, warnings);
 
         if (problems.Count == 0) return warnings;
 
@@ -161,6 +162,44 @@ public static class SecurityStartupChecks
         if (IsBurned(password) || password is "Admin@123")
         {
             problems.Add("Seed:AdminPassword is a known default. Choose a new one.");
+        }
+    }
+
+    /// <summary>
+    /// Outside development a mail server must be configured, because without one the
+    /// "forgot password" flow silently does nothing.
+    ///
+    /// This is worth refusing to boot over rather than warning about. The reset page would
+    /// still say "a link is on its way" - it says that whether or not the address exists,
+    /// deliberately - so nobody would discover the email was never sent until an owner was
+    /// locked out and the one recovery route turned out not to work.
+    /// </summary>
+    private static void ValidateEmail(
+        IConfiguration configuration, IHostEnvironment environment,
+        List<string> problems, List<string> warnings)
+    {
+        var configured =
+            !string.IsNullOrWhiteSpace(configuration["Email:Host"])
+            && !string.IsNullOrWhiteSpace(configuration["Email:Username"])
+            && !string.IsNullOrWhiteSpace(configuration["Email:Password"]);
+
+        if (configured) return;
+
+        const string explanation =
+            "No mail server is configured, so password reset emails cannot be sent. Set "
+            + "Email:Host, Email:Username, Email:Password and Email:FromAddress. For Gmail "
+            + "the password must be a 16-character App Password, not the account's own "
+            + "password, and it belongs in user-secrets rather than a tracked file.";
+
+        if (environment.IsDevelopment())
+        {
+            warnings.Add(explanation
+                + " (Allowed here because the environment is Development - reset links are "
+                + "written to this console instead.)");
+        }
+        else
+        {
+            problems.Add(explanation);
         }
     }
 

@@ -651,3 +651,17 @@ export interface ResetMemberPasswordRequest {
   newPassword: string;
   confirmPassword: string;
 }
+
+// ---------------------------------------------------------- forgotten passwords
+
+/** Asking for a reset link. Works for admins and members alike - both are User rows. */
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+/** Finishing a reset, with the token out of the emailed link. */
+export interface ResetPasswordWithTokenRequest {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}

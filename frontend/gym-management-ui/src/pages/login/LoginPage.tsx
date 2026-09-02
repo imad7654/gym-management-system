@@ -10,6 +10,7 @@ import {
   Link,
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import type { AxiosError } from 'axios';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '@services/authService';
 import { useAuthStore } from '@store/authStore';
@@ -35,6 +36,29 @@ const LoginPage = () => {
     },
   });
 
+  /**
+   * What actually went wrong.
+   *
+   * This used to say "Invalid email or password" for every failure - including the API
+   * being switched off, a CORS refusal or a 500. Somebody then hunts for a typo in a
+   * password that was correct all along, which is exactly the wrong place to look. Only a
+   * 401 is a credentials problem; everything else is the gym's own system being unreachable
+   * and should say so.
+   */
+  const describeLoginFailure = (error: unknown): string => {
+    const axiosError = error as AxiosError;
+
+    if (axiosError?.response?.status === 401) {
+      return 'Invalid email or password. Please try again.';
+    }
+
+    if (!axiosError?.response) {
+      return 'Could not reach the gym system. Check it is running, then try again.';
+    }
+
+    return `The gym system returned an error (${axiosError.response.status}). Please try again.`;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate(formData);
@@ -59,7 +83,7 @@ const LoginPage = () => {
 
         {loginMutation.isError && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            Invalid email or password. Please try again.
+            {describeLoginFailure(loginMutation.error)}
           </Alert>
         )}
 
@@ -99,6 +123,12 @@ const LoginPage = () => {
           </Button>
 
           <Typography variant="body2" align="center" sx={{ mt: 2 }}>
+            <Link component={RouterLink} to="/forgot-password">
+              Forgot your password?
+            </Link>
+          </Typography>
+
+          <Typography variant="body2" align="center" sx={{ mt: 1 }}>
             Are you a member without an account yet?{' '}
             <Link component={RouterLink} to="/register">
               Set one up

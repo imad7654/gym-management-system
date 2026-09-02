@@ -1,4 +1,5 @@
 using FluentValidation;
+using GymManagement.Application.DTOs.Auth;
 using GymManagement.Application.DTOs.Member;
 using GymManagement.Domain.Common;
 using Microsoft.Extensions.Configuration;
@@ -55,6 +56,41 @@ public class ResetMemberPasswordRequestValidator : AbstractValidator<ResetMember
 
         RuleFor(x => x.NewPassword)
             .NotEmpty().WithMessage("A new password is required")
+            .MinimumLength(minimumLength)
+                .WithMessage($"The password must be at least {minimumLength} characters");
+
+        RuleFor(x => x.ConfirmPassword)
+            .Equal(x => x.NewPassword).WithMessage("The two passwords do not match");
+    }
+}
+
+/// <summary>Asking for a reset link. Only the address is checked here.</summary>
+public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
+{
+    public ForgotPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Enter the email address you sign in with")
+            .EmailAddress().WithMessage("That does not look like an email address")
+            .MaximumLength(256);
+    }
+}
+
+/// <summary>
+/// Finishing a reset. Held to the same length rule as every other way a password is set,
+/// so the email route cannot quietly be the weakest one.
+/// </summary>
+public class ResetPasswordWithTokenRequestValidator : AbstractValidator<ResetPasswordWithTokenRequest>
+{
+    public ResetPasswordWithTokenRequestValidator(IConfiguration configuration)
+    {
+        var minimumLength = PasswordRules.MinimumLength(configuration);
+
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("This reset link is missing its token. Use the link from the email.");
+
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("A password is required")
             .MinimumLength(minimumLength)
                 .WithMessage($"The password must be at least {minimumLength} characters");
 

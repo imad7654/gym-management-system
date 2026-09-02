@@ -14,6 +14,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<ExchangeRate> ExchangeRates { get; }
     IRepository<AuditLog> AuditLogs { get; }
     IRepository<RefreshToken> RefreshTokens { get; }
+    IRepository<PasswordResetToken> PasswordResetTokens { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(CancellationToken cancellationToken = default);

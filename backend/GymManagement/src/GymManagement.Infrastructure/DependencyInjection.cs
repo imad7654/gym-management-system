@@ -46,6 +46,26 @@ public static class DependencyInjection
         // Stateless - it only turns uploaded bytes into rows of text.
         services.AddSingleton<IMemberImportFileReader, MemberImportFileReader>();
 
+        // Email. Which sender is registered depends purely on whether a mail server has
+        // been configured, so a developer with no Gmail account still gets a working reset
+        // flow with the link written to the log. SecurityStartupChecks refuses to boot
+        // outside development if that is what ends up registered, so the log-only sender
+        // cannot reach a real gym by accident.
+        var mailConfigured =
+            !string.IsNullOrWhiteSpace(configuration["Email:Host"])
+            && !string.IsNullOrWhiteSpace(configuration["Email:Username"])
+            && !string.IsNullOrWhiteSpace(configuration["Email:Password"]);
+
+        if (mailConfigured)
+        {
+            services.AddScoped<IEmailSender, SmtpEmailSender>();
+        }
+        else
+        {
+            services.AddScoped<IEmailSender, LoggingEmailSender>();
+        }
+
+
         return services;
     }
 }
