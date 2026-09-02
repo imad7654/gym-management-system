@@ -47,6 +47,17 @@ public class Client : AuditableEntity, ISoftDeletable
 
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 
+    /// <summary>
+    /// The login this member uses to see their own membership, or null if they have never
+    /// signed up. Optional on purpose: the owner creates the member record at the desk, and
+    /// most members will never make an account at all.
+    ///
+    /// The link lives here rather than as a ClientId on User because a login is something a
+    /// member may acquire, while an administrator has no member record at all - putting it
+    /// on User would leave that column null for every account that runs the gym.
+    /// </summary>
+    public int? UserId { get; set; }
+
     // Soft Delete
     public bool IsActive { get; set; } = true;
     public DateTime? DeletedAt { get; set; }
@@ -54,6 +65,7 @@ public class Client : AuditableEntity, ISoftDeletable
     public string FullName => $"{FirstName} {LastName}";
 
     // Navigation properties
+    public virtual User? User { get; set; }
     public virtual Package? CurrentPackage { get; set; }
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public virtual ICollection<PaymentHistory> PaymentHistories { get; set; } = new List<PaymentHistory>();

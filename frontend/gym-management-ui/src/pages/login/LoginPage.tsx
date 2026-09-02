@@ -7,8 +7,9 @@ import {
   Button,
   Box,
   Alert,
+  Link,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '@services/authService';
 import { useAuthStore } from '@store/authStore';
@@ -16,7 +17,7 @@ import { LoginRequest } from '@app-types/index';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { setTokens, setUser } = useAuthStore();
+  const { setTokens, setUser, homePath } = useAuthStore();
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
     password: '',
@@ -27,7 +28,10 @@ const LoginPage = () => {
     onSuccess: (data) => {
       setTokens(data.accessToken, data.refreshToken);
       setUser(data.user);
-      navigate('/admin/dashboard');
+
+      // Members and administrators do not share a home. Sending everyone to the admin
+      // dashboard put members on a screen whose every request they are refused.
+      navigate(homePath(), { replace: true });
     },
   });
 
@@ -47,10 +51,10 @@ const LoginPage = () => {
     <Container maxWidth="sm" sx={{ mt: 8 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" align="center" gutterBottom>
-          Admin Login
+          Sign in
         </Typography>
         <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
-          Sign in to access the admin dashboard
+          For gym staff and for members.
         </Typography>
 
         {loginMutation.isError && (
@@ -93,6 +97,13 @@ const LoginPage = () => {
           >
             {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
           </Button>
+
+          <Typography variant="body2" align="center" sx={{ mt: 2 }}>
+            Are you a member without an account yet?{' '}
+            <Link component={RouterLink} to="/register">
+              Set one up
+            </Link>
+          </Typography>
         </Box>
       </Paper>
     </Container>

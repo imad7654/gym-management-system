@@ -1,5 +1,6 @@
 using GymManagement.Application.DTOs.Client;
 using GymManagement.Application.DTOs.Common;
+using GymManagement.Application.DTOs.Member;
 using GymManagement.Application.Interfaces;
 using GymManagement.Application.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,15 +15,18 @@ public class ClientsController : ControllerBase
 {
     private readonly IClientService _clientService;
     private readonly IPaymentService _paymentService;
+    private readonly IMemberAccountService _memberAccounts;
     private readonly ICurrentUserService _currentUserService;
 
     public ClientsController(
         IClientService clientService,
         IPaymentService paymentService,
+        IMemberAccountService memberAccounts,
         ICurrentUserService currentUserService)
     {
         _clientService = clientService;
         _paymentService = paymentService;
+        _memberAccounts = memberAccounts;
         _currentUserService = currentUserService;
     }
 
@@ -232,5 +236,43 @@ public class ClientsController : ControllerBase
         }
 
         return Ok(ApiResponse.SuccessResponse("Membership unfrozen"));
+    }
+    /// <summary>
+    /// Whether this member has a login of their own, for the owner's view of them.
+    /// </summary>
+    [HttpGet("{id}/account")]
+    [ProducesResponseType(typeof(ApiResponse<MemberAccountDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMemberAccount(int id, CancellationToken cancellationToken)
+    {
+        var account = await _memberAccounts.GetAccountForClientAsync(id, cancellationToken);
+        return Ok(ApiResponse<MemberAccountDto>.SuccessResponse(account));
+    }
+
+    /// <summary>
+    /// Sets a member's password for them, when they have forgotten it.
+    /// </summary>
+    /// <remarks>
+    /// The only recovery a member has. There is no email anywhere in this system, so there
+    /// is no reset link to send - the member asks at the desk and the owner sets it here.
+    /// Every session they hold is ended, and the reset is written to the audit trail.
+    /// </remarks>
+    [HttpPost("{id}/account/reset-password")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetMemberPassword(
+        int id, [FromBody] ResetMemberPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _memberAccounts.ResetMemberPasswordAsync(
+            id, request, _currentUserService.UserId, cancellationToken);
+
+        if (!result)
+        {
+            return NotFound(ApiResponse.FailResponse("That member has no account."));
+        }
+
+        return Ok(ApiResponse.SuccessResponse(
+            "Password reset. Tell the member the new password - it is not stored anywhere."));
     }
 }

@@ -14,6 +14,8 @@ import ErrorBoundary from '@components/ErrorBoundary';
 // Pages
 import { HomePage } from '@pages/home';
 import { LoginPage } from '@pages/login';
+import { RegisterPage } from '@pages/register';
+import { MyMembershipPage } from '@pages/member';
 import { DashboardPage } from '@pages/dashboard';
 import { ClientsPage, MemberPage } from '@pages/clients';
 import { PackagesPage } from '@pages/packages';
@@ -35,6 +37,7 @@ function App() {
             {/* Public routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
             {/* Protected admin routes */}
 <Route
@@ -61,6 +64,22 @@ function App() {
   <Route path="change-password" element={<ChangePasswordPage />} />
   <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
 </Route>
+
+            {/*
+              The member area. Its own top-level branch rather than a child of /admin,
+              because a member must never load an admin screen even briefly - every one of
+              those calls an AdminOnly endpoint and would flash a page full of errors.
+            */}
+            <Route
+              path="/member"
+              element={
+                <ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={['Client']}>
+                    <MyMembershipPage />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              }
+            />
 
 
             {/* Fallback */}

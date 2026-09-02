@@ -16,7 +16,7 @@ import PauseCircleIcon from '@mui/icons-material/PauseCircle';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import RestoreIcon from '@mui/icons-material/Restore';
 import { clientService } from '@services/clientService';
-import { ClientFormDialog } from '@components/clients';
+import { ClientFormDialog, MemberLoginCard } from '@components/clients';
 import { PaymentFormDialog } from '@components/payments';
 import {
   MemberStatusHeader,
@@ -167,6 +167,8 @@ const MemberPage = () => {
       )}
 
       <MemberMoneyHistory member={member} onChanged={refresh} readOnly={removed} />
+
+      <MemberLoginCard clientId={member.id} memberName={member.fullName} />
 
       <MemberDetails member={member} />
 

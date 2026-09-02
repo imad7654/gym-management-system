@@ -603,3 +603,51 @@ export interface UpdateUserRequest {
 export interface ResetUserPasswordRequest {
   newPassword: string;
 }
+
+// ---------------------------------------------------------------- member accounts
+
+/**
+ * Signing up as a member. This never creates a membership - the phone number and surname
+ * are matched against a member the gym already added at the desk, so a stranger cannot put
+ * themselves in the member list.
+ */
+export interface RegisterMemberRequest {
+  phoneNumber: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+/** A member's own view of their membership. Never carries anything about anyone else. */
+export interface MyMembership {
+  fullName: string;
+  phoneNumber: string;
+  email?: string;
+  membershipStatus: MembershipStatusString;
+  isSuspended: boolean;
+  /** Negative once it has run out, so the page can say how long ago rather than just "expired". */
+  daysRemaining?: number;
+  membershipStartDate?: string;
+  membershipEndDate?: string;
+  currentPackageName?: string;
+  /** Whether today's status lets them train. Expiring members still can. */
+  canTrainToday: boolean;
+  /** Money already put down that has not yet bought a period. */
+  outstandingCredit: number;
+}
+
+/** Whether a member has a login of their own, for the owner's view of them. */
+export interface MemberAccount {
+  hasAccount: boolean;
+  userId?: number;
+  email?: string;
+  createdAt?: string;
+  /** False when the owner has switched the login off. */
+  isActive: boolean;
+}
+
+export interface ResetMemberPasswordRequest {
+  newPassword: string;
+  confirmPassword: string;
+}

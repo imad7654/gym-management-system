@@ -12,6 +12,9 @@ interface AuthState {
   setUser: (user: UserInfo) => void;
   logout: () => void;
   isAdmin: () => boolean;
+  isMember: () => boolean;
+  /** Where this user belongs after signing in. Members and admins do not share a home. */
+  homePath: () => string;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -42,6 +45,19 @@ export const useAuthStore = create<AuthState>()(
       isAdmin: () => {
         const user = get().user;
         return user?.roles?.includes('Admin') ?? false;
+      },
+
+      isMember: () => {
+        const user = get().user;
+        return user?.roles?.includes('Client') ?? false;
+      },
+
+      homePath: () => {
+        // Admin is checked first: an account holding both roles is staff, and sending
+        // them to the member area would hide every screen they actually work in.
+        if (get().isAdmin()) return '/admin/dashboard';
+        if (get().isMember()) return '/member';
+        return '/';
       },
     }),
     {

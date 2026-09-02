@@ -65,6 +65,20 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.HasIndex(c => c.MembershipEndDate);
         builder.HasIndex(c => c.IsSuspended);
 
+        // One login per membership, and one membership per login. The unique index is what
+        // actually enforces it: two members sharing an account would each see the other's
+        // payment history.
+        //
+        // SetNull rather than Cascade - removing a login must not delete the member record
+        // and their payment history along with it.
+        builder.HasIndex(c => c.UserId)
+            .IsUnique();
+
+        builder.HasOne(c => c.User)
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(c => c.CurrentPackage)
             .WithMany(p => p.Clients)
             .HasForeignKey(c => c.CurrentPackageId)

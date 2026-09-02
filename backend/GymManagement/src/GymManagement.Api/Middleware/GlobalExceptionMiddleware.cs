@@ -27,10 +27,38 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
+            // Only genuinely unexpected failures are logged as errors.
+            //
+            // These four are the application saying no on purpose - a wrong surname at
+            // sign-up, a member who already has an account, a validation failure. They were
+            // all logged as "An unhandled exception occurred", which was tolerable while
+            // every endpoint was admin-only and refusals were rare. Sign-up is public and
+            // refuses routinely, so leaving it would fill the log with ERR lines that are
+            // not faults - and the log is where the real ones are found.
+            if (IsExpected(ex))
+            {
+                _logger.LogInformation("Request refused: {Message}", ex.Message);
+            }
+            else
+            {
+                _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
+            }
+
             await HandleExceptionAsync(context, ex);
         }
     }
+
+    /// <summary>
+    /// Whether this exception is the application deliberately refusing, rather than
+    /// something going wrong. Mirrors the cases <see cref="HandleExceptionAsync"/> maps to
+    /// a 4xx - anything that falls through to a 500 is a fault and is logged as one.
+    /// </summary>
+    private static bool IsExpected(Exception exception) =>
+        exception is ValidationException
+            or NotFoundException
+            or UnauthorizedException
+            or BusinessException;
+
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
