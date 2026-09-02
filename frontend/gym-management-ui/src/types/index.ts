@@ -723,3 +723,14 @@ export interface Today {
   owesCount: number;
   owes: OwesSummary[];
 }
+
+/** How the month is going. The owner's, not the desk's. */
+export interface MonthSoFar {
+  dayOfMonth: number;
+  thisMonthUsd: number;
+  /** Taken by the same day of last month — the only fair comparison mid-month. */
+  samePointLastMonthUsd: number;
+  lastMonthTotalUsd: number;
+  allTimeUsd: number;
+  activeMembers: number;
+}

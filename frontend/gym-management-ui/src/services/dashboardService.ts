@@ -1,6 +1,7 @@
 import axiosInstance from '@lib/axios';
 import {
   ApiResponse,
+  MonthSoFar,
   Today,
 } from '@app-types/index';
 
@@ -8,6 +9,12 @@ export const dashboardService = {
   /** The first screen of the day: the drawer, who to ring, and who owes. */
   getToday: async (): Promise<Today> => {
     const response = await axiosInstance.get<ApiResponse<Today>>('/dashboard/today');
+    return response.data.data!;
+  },
+
+  /** How the month is going. Admin only - month-to-date is revenue history. */
+  getMonthSoFar: async (): Promise<MonthSoFar> => {
+    const response = await axiosInstance.get<ApiResponse<MonthSoFar>>('/dashboard/this-month');
     return response.data.data!;
   },
 

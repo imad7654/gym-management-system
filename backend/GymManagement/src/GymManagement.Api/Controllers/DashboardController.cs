@@ -82,4 +82,20 @@ public class DashboardController : ControllerBase
 
         return Ok(ApiResponse.SuccessResponse(called ? "Marked as called" : "Mark removed"));
     }
+    /// <summary>
+    /// How the month is going: taken so far against the same point last month.
+    /// </summary>
+    /// <remarks>
+    /// The owner's, not the desk's. Month-to-date is revenue history, which is the one
+    /// thing reception is deliberately not shown - so this is its own endpoint rather than
+    /// part of the shared Today screen.
+    /// </remarks>
+    [Authorize(Policy = "AdminOnly")]
+    [HttpGet("this-month")]
+    [ProducesResponseType(typeof(ApiResponse<MonthSoFarDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMonthSoFar(CancellationToken cancellationToken)
+    {
+        var month = await _dashboardService.GetMonthSoFarAsync(cancellationToken);
+        return Ok(ApiResponse<MonthSoFarDto>.SuccessResponse(month));
+    }
 }

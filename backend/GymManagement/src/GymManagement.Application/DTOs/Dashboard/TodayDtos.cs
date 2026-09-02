@@ -95,3 +95,38 @@ public class MarkChasedRequest
 {
     public bool Called { get; set; } = true;
 }
+
+/// <summary>
+/// How the month is going. The owner's, not the desk's.
+///
+/// Led by the month so far rather than by the all-time total, because the all-time total
+/// only ever goes up and there is nothing to do about it. The month can be behind, and
+/// being behind is something a person acts on - which is the whole test for what belongs
+/// on the first screen of the day.
+/// </summary>
+public class MonthSoFarDto
+{
+    /// <summary>Which day of the month it is, so the comparison below can be read fairly.</summary>
+    public int DayOfMonth { get; set; }
+
+    /// <summary>Taken since the first of this month.</summary>
+    public decimal ThisMonthUsd { get; set; }
+
+    /// <summary>
+    /// Taken by the same day of last month.
+    ///
+    /// The comparison that matters. Against last month's <em>total</em>, every month looks
+    /// like a disaster until the very end of it, and a number that is alarming by
+    /// construction gets ignored within a week.
+    /// </summary>
+    public decimal SamePointLastMonthUsd { get; set; }
+
+    /// <summary>All of last month, for when the month-to-date has caught up.</summary>
+    public decimal LastMonthTotalUsd { get; set; }
+
+    /// <summary>Everything the gym has ever taken. Context, not a target.</summary>
+    public decimal AllTimeUsd { get; set; }
+
+    /// <summary>Members entitled to train right now. Expiring members count - they can still come in.</summary>
+    public int ActiveMembers { get; set; }
+}

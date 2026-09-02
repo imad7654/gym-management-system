@@ -19,6 +19,9 @@ public interface IDashboardService
     /// <summary>Members worth ringing: about to lapse, or recently lapsed.</summary>
     Task<List<NeedsChasingDto>> GetNeedsChasingAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>How the month is going, for the owner. Not desk work.</summary>
+    Task<MonthSoFarDto> GetMonthSoFarAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Records that somebody rang this member, or takes the mark back off.</summary>
     Task<bool> MarkChasedAsync(int clientId, bool called, CancellationToken cancellationToken = default);
 }
@@ -292,6 +295,54 @@ public class DashboardService : IDashboardService
                     && c.LastChasedAt.Value < todayEndUtc
             })
             .ToList();
+    }
+
+    /// <summary>
+    /// How the month is going, for the owner.
+    ///
+    /// Compared against the same day of last month rather than against last month's total:
+    /// on the 3rd, every month is 90% behind its predecessor, and a figure that is alarming
+    /// by construction stops being read within a week.
+    /// </summary>
+    public async Task<MonthSoFarDto> GetMonthSoFarAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var today = _clock.Today;
+        var firstOfThisMonth = new DateOnly(today.Year, today.Month, 1);
+        var firstOfLastMonth = firstOfThisMonth.AddMonths(-1);
+
+        var monthStartUtc = _clock.DayBoundsUtc(firstOfThisMonth).StartUtc;
+        var tonightUtc = _clock.DayBoundsUtc(today).EndUtc;
+
+        var lastMonthStartUtc = _clock.DayBoundsUtc(firstOfLastMonth).StartUtc;
+        var lastMonthEndUtc = monthStartUtc;
+
+        // The same day of last month, clamped to its length: comparing the 31st against a
+        // February that has no 31st would silently compare against nothing at all.
+        var daysInLastMonth = DateTime.DaysInMonth(firstOfLastMonth.Year, firstOfLastMonth.Month);
+        var samePointLastMonth = firstOfLastMonth.AddDays(Math.Min(today.Day, daysInLastMonth) - 1);
+        var samePointEndUtc = _clock.DayBoundsUtc(samePointLastMonth).EndUtc;
+
+        return new MonthSoFarDto
+        {
+            DayOfMonth = today.Day,
+
+            ThisMonthUsd = await SumCompletedBetween(monthStartUtc, tonightUtc, cancellationToken),
+            SamePointLastMonthUsd =
+                await SumCompletedBetween(lastMonthStartUtc, samePointEndUtc, cancellationToken),
+            LastMonthTotalUsd =
+                await SumCompletedBetween(lastMonthStartUtc, lastMonthEndUtc, cancellationToken),
+
+            // Reversals are Completed rows carrying a negative amount, so summing Completed
+            // nets them off correctly rather than counting refunded money as income.
+            AllTimeUsd = await _unitOfWork.Payments.Query()
+                .Where(p => p.Status == TransactionStatus.Completed)
+                .SumAsync(p => p.Amount, cancellationToken),
+
+            ActiveMembers = await _unitOfWork.Clients.Query()
+                .AllowedIn(today)
+                .CountAsync(cancellationToken)
+        };
     }
 
     /// <summary>
