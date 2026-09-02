@@ -7,6 +7,7 @@ import { queryClient } from '@lib/queryClient';
 import { theme } from '@lib/theme';
 import { ProtectedRoute } from '@routes/ProtectedRoute';
 import { RoleBasedRoute } from '@routes/RoleBasedRoute';
+import { AdminOnly, HomeRedirect } from '@routes/AdminOnly';
 import { AdminLayout } from '@components/layout';
 import ErrorBoundary from '@components/ErrorBoundary';
 
@@ -47,26 +48,34 @@ function App() {
   path="/admin"
   element={
     <ProtectedRoute>
-      <RoleBasedRoute allowedRoles={['Admin']}>
+      <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
         <AdminLayout />
       </RoleBasedRoute>
     </ProtectedRoute>
   }
 >
-  <Route path="dashboard" element={<DashboardPage />} />
+  {/* The desk. Reception and the owner both work here. */}
   <Route path="clients" element={<ClientsPage />} />
-  <Route path="clients/import" element={<ImportMembersPage />} />
   <Route path="clients/:id" element={<MemberPage />} />
   <Route path="payments" element={<PaymentsPage />} />
   <Route path="reports/who-owes" element={<WhoOwesMoneyPage />} />
   <Route path="reports/daily-takings" element={<DailyTakingsPage />} />
-  <Route path="reports/history" element={<AuditTrailPage />} />
-  <Route path="packages" element={<PackagesPage />} />
-  <Route path="users" element={<UsersPage />} />
-  <Route path="settings" element={<SettingsPage />} />
   <Route path="change-password" element={<ChangePasswordPage />} />
-  <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+
+  {/*
+    The owner's. Each of these is also refused by its own endpoints - the guard here only
+    saves reception from opening a screen that would fill with permission errors.
+  */}
+  <Route path="dashboard" element={<AdminOnly><DashboardPage /></AdminOnly>} />
+  <Route path="clients/import" element={<AdminOnly><ImportMembersPage /></AdminOnly>} />
+  <Route path="reports/history" element={<AdminOnly><AuditTrailPage /></AdminOnly>} />
+  <Route path="packages" element={<AdminOnly><PackagesPage /></AdminOnly>} />
+  <Route path="users" element={<AdminOnly><UsersPage /></AdminOnly>} />
+  <Route path="settings" element={<AdminOnly><SettingsPage /></AdminOnly>} />
+
+  <Route path="*" element={<HomeRedirect />} />
 </Route>
+
 
             {/*
               The member area. Its own top-level branch rather than a child of /admin,

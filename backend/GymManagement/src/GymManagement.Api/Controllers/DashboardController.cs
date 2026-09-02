@@ -9,7 +9,7 @@ namespace GymManagement.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = "AdminOrStaff")]
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboardService;
@@ -22,6 +22,8 @@ public class DashboardController : ControllerBase
     /// <summary>
     /// Get dashboard statistics
     /// </summary>
+    // Carries all-time revenue, which is the owner's business and nobody else's.
+    [Authorize(Policy = "AdminOnly")]
     [HttpGet("stats")]
     [ProducesResponseType(typeof(ApiResponse<DashboardStatsDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStats()

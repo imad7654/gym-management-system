@@ -17,6 +17,7 @@ import { clientService } from '@services/clientService';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useAuthStore } from '@store/authStore';
 import SearchIcon from '@mui/icons-material/Search';
 import type { ClientQueryParams, Client, ClientListItem } from '../../types/index';
 import { ClientFormDialog, DeleteClientDialog } from '@components/clients';
@@ -32,6 +33,7 @@ const ClientsPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const canRemoveMembers = useAuthStore((state) => state.isAdmin)();
   const [clientToDelete, setClientToDelete] = useState<ClientListItem | null>(null);
 
   const { data: clientsData, isLoading } = useQuery({
@@ -176,14 +178,21 @@ const ClientsPage = () => {
                 >
                   <EditIcon />
                 </IconButton>
-                <IconButton
-                  size="small"
-                  color="error"
-                  aria-label={`Remove ${c.fullName}`}
-                  onClick={() => handleDeleteClient(c)}
-                >
-                  <DeleteIcon />
-                </IconButton>
+                {/*
+                  Removing a member hides their payments from the reports that count them,
+                  so it is the owner's call rather than the desk's. The endpoint refuses
+                  reception as well.
+                */}
+                {canRemoveMembers && (
+                  <IconButton
+                    size="small"
+                    color="error"
+                    aria-label={`Remove ${c.fullName}`}
+                    onClick={() => handleDeleteClient(c)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                )}
               </>
             ),
           },

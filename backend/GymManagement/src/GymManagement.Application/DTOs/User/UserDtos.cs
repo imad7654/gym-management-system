@@ -40,6 +40,13 @@ public class CreateUserRequest
     /// system, so a generated password could not be delivered.
     /// </summary>
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>
+    /// "Admin" or "Staff". Staff is reception: they run the desk but cannot reverse a
+    /// payment, read the audit trail, see revenue history or change what anything costs.
+    /// Defaults to Admin, which is what every account made before this field existed was.
+    /// </summary>
+    public string Role { get; set; } = "Admin";
 }
 
 public class UpdateUserRequest
@@ -48,6 +55,12 @@ public class UpdateUserRequest
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
+
+    /// <summary>
+    /// "Admin" or "Staff". Changing the last administrator down to Staff is refused for
+    /// the same reason switching them off is: it would leave nobody able to change it back.
+    /// </summary>
+    public string Role { get; set; } = "Admin";
 }
 
 /// <summary>

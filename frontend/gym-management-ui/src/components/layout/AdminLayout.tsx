@@ -60,18 +60,34 @@ export const AdminLayout = () => {
     navigate(path);
   };
 
+  // Which screens this person actually has. Reception is not shown the owner's, because a
+  // menu full of items that bounce you back is worse than a shorter menu.
+  //
+  // The endpoints behind each of these enforce the same split independently - this list
+  // decides what is worth showing, not what is allowed.
+  const isAdmin = useAuthStore((state) => state.isAdmin)();
+
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
+    ...(isAdmin
+      ? [{ text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' }]
+      : []),
     { text: 'Clients', icon: <PeopleIcon />, path: '/admin/clients' },
-    { text: 'Import Members', icon: <UploadFileIcon />, path: '/admin/clients/import' },
+    ...(isAdmin
+      ? [{ text: 'Import Members', icon: <UploadFileIcon />, path: '/admin/clients/import' }]
+      : []),
     { text: 'Payments', icon: <PaymentIcon />, path: '/admin/payments' },
     { text: 'Daily Takings', icon: <ReceiptIcon />, path: '/admin/reports/daily-takings' },
     { text: 'Who Owes Money', icon: <MoneyOffIcon />, path: '/admin/reports/who-owes' },
-    { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
-    { text: 'History', icon: <HistoryIcon />, path: '/admin/reports/history' },
-    { text: 'Who Can Sign In', icon: <ManageAccountsIcon />, path: '/admin/users' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
+    ...(isAdmin
+      ? [
+          { text: 'Packages', icon: <PackageIcon />, path: '/admin/packages' },
+          { text: 'History', icon: <HistoryIcon />, path: '/admin/reports/history' },
+          { text: 'Who Can Sign In', icon: <ManageAccountsIcon />, path: '/admin/users' },
+          { text: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
+        ]
+      : []),
   ];
+
 
   const drawer = (
     <Box>

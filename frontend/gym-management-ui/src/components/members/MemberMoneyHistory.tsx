@@ -12,6 +12,7 @@ import {
 import UndoIcon from '@mui/icons-material/Undo';
 import { MemberPayment, MemberSummary } from '@app-types/index';
 import { ReversePaymentDialog } from '@components/payments';
+import { useAuthStore } from '@store/authStore';
 
 /**
  * What the member owes, and everything they have ever paid.
@@ -53,6 +54,12 @@ export const MemberMoneyHistory = ({
   readOnly = false,
 }: MemberMoneyHistoryProps) => {
   const [reversing, setReversing] = useState<MemberPayment | null>(null);
+
+  // Only the owner refunds. Payments are append-only, so a desk that cannot reverse
+  // structurally cannot take money back out of the record - which is most of the reason
+  // the owner can check this system against the drawer at all. The endpoint refuses
+  // reception too; this only keeps a button off the screen that would always fail.
+  const canRefund = useAuthStore((state) => state.isAdmin)();
 
   return (
     <>
@@ -134,7 +141,7 @@ export const MemberMoneyHistory = ({
                   a button that looks like it will hand cash back should never be there
                   unless it will.
                 */}
-                {!readOnly && !payment.isReversal && !payment.isReversed && (
+                {canRefund && !readOnly && !payment.isReversal && !payment.isReversed && (
                   <Button
                     size="small"
                     color="error"

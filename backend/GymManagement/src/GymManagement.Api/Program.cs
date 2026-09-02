@@ -119,10 +119,24 @@ builder.Services.AddAuthentication(options =>
 // Authorization policies
 builder.Services.AddAuthorization(options =>
 {
+    // The owner. Everything that changes what the gym charges, reveals what it has
+    // earned, or can quietly reduce recorded income.
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+
+    // The desk. Reception runs the day - find a member, take a payment, add somebody,
+    // freeze a membership - and the owner can do all of that too, so both roles pass.
+    //
+    // The line reception must not cross is money leaving the record. Payments are
+    // append-only, so a desk that cannot reverse structurally cannot make money vanish
+    // from the till, which is most of why the owner wanted this system. Everything else
+    // reception is refused - revenue history, the audit trail, prices, accounts - follows
+    // from the same idea: they operate the gym, they do not audit it.
+    options.AddPolicy("AdminOrStaff", policy => policy.RequireRole("Admin", "Staff"));
+
     options.AddPolicy("ClientOnly", policy => policy.RequireRole("Client"));
     options.AddPolicy("AdminOrClient", policy => policy.RequireRole("Admin", "Client"));
 });
+
 
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

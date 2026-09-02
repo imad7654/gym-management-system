@@ -9,7 +9,7 @@ namespace GymManagement.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = "AdminOrStaff")]
 public class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _paymentService;
@@ -75,6 +75,10 @@ public class PaymentsController : ControllerBase
     /// Reverse a payment. Writes a second row cancelling the original and takes back the
     /// days it bought; the original row is never edited. Returns the reversal row.
     /// </summary>
+    // The one line reception does not cross. Payments are append-only, so a desk that
+    // cannot reverse structurally cannot make money disappear from the till - which is
+    // most of why the owner wanted this system in the first place.
+    [Authorize(Policy = "AdminOnly")]
     [HttpPost("{id}/reverse")]
     [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]

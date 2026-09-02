@@ -591,6 +591,8 @@ export interface CreateUserRequest {
   email: string;
   phoneNumber?: string | null;
   password: string;
+  /** 'Admin' or 'Staff'. Staff is reception. */
+  role: string;
 }
 
 export interface UpdateUserRequest {
@@ -598,6 +600,8 @@ export interface UpdateUserRequest {
   lastName: string;
   email: string;
   phoneNumber?: string | null;
+  /** 'Admin' or 'Staff'. Demoting the last administrator is refused by the server. */
+  role: string;
 }
 
 export interface ResetUserPasswordRequest {

@@ -10,7 +10,7 @@ namespace GymManagement.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/[controller]")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = "AdminOrStaff")]
 public class ClientsController : ControllerBase
 {
     private readonly IClientService _clientService;
@@ -109,6 +109,9 @@ public class ClientsController : ControllerBase
     /// <summary>
     /// Soft delete a client
     /// </summary>
+    // Removing a member hides their payments from the reports that count them. The owner
+    // decides that, not the desk.
+    [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id}")]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
@@ -127,6 +130,7 @@ public class ClientsController : ControllerBase
     /// <summary>
     /// Restore a soft-deleted client
     /// </summary>
+    [Authorize(Policy = "AdminOnly")]
     [HttpPost("{id}/restore")]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]

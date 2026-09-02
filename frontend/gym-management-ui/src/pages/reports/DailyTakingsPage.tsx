@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ResponsiveTable } from '@components/common';
 import { reportService } from '@services/reportService';
 import { DailyTakings, TakingsPayment } from '@app-types/index';
+import { useAuthStore } from '@store/authStore';
 
 const usd = (amount: number) =>
   `$${amount.toLocaleString('en-US', {
@@ -53,6 +54,7 @@ const showTime = (iso: string) =>
  */
 const DailyTakingsPage = () => {
   const [date, setDate] = useState(todayIso());
+  const canBrowseDays = useAuthStore((state) => state.isAdmin)();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reports', 'daily-takings', date],
@@ -68,32 +70,47 @@ const DailyTakingsPage = () => {
         What came in on one day, split so you can count the drawer against it.
       </Typography>
 
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 3 }}>
-        <IconButton onClick={() => setDate(shiftDay(date, -1))} aria-label="Previous day">
-          <ChevronLeft />
-        </IconButton>
-        <TextField
-          type="date"
-          size="small"
-          value={date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-          sx={{ width: 190 }}
-        />
-        <IconButton
-          onClick={() => setDate(shiftDay(date, 1))}
-          disabled={date >= todayIso()}
-          aria-label="Next day"
-        >
-          <ChevronRight />
-        </IconButton>
-        <Tooltip title="Back to today">
-          <span>
-            <IconButton onClick={() => setDate(todayIso())} disabled={date === todayIso()}>
-              <Today />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Stack>
+      {/*
+        Reception counts today's drawer and nothing else. Reading back over past days is
+        revenue history by another name, which is the owner's, so the whole date control
+        goes rather than being shown and refused. The endpoint enforces it either way.
+      */}
+      {canBrowseDays ? (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 3 }}>
+          <IconButton onClick={() => setDate(shiftDay(date, -1))} aria-label="Previous day">
+            <ChevronLeft />
+          </IconButton>
+          <TextField
+            type="date"
+            size="small"
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+            sx={{ width: 190 }}
+          />
+          <IconButton
+            onClick={() => setDate(shiftDay(date, 1))}
+            disabled={date >= todayIso()}
+            aria-label="Next day"
+          >
+            <ChevronRight />
+          </IconButton>
+          <Tooltip title="Back to today">
+            <span>
+              <IconButton onClick={() => setDate(todayIso())} disabled={date === todayIso()}>
+                <Today />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
+      ) : (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Today, {new Date(date).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+          })}
+        </Typography>
+      )}
 
       {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>

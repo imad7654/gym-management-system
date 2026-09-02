@@ -34,6 +34,7 @@ const UserFormDialog = ({ open, onClose, user, onSaved }: UserFormDialogProps) =
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('Admin');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,6 +49,7 @@ const UserFormDialog = ({ open, onClose, user, onSaved }: UserFormDialogProps) =
     setEmail(user?.email ?? '');
     setPhoneNumber(user?.phoneNumber ?? '');
     setPassword('');
+    setRole(user?.roles?.includes('Staff') ? 'Staff' : 'Admin');
     setError(null);
   }, [open, user]);
 
@@ -59,6 +61,7 @@ const UserFormDialog = ({ open, onClose, user, onSaved }: UserFormDialogProps) =
           lastName: lastName.trim(),
           email: email.trim(),
           phoneNumber: phoneNumber.trim() || null,
+          role,
         });
         return;
       }
@@ -69,6 +72,7 @@ const UserFormDialog = ({ open, onClose, user, onSaved }: UserFormDialogProps) =
         email: email.trim(),
         phoneNumber: phoneNumber.trim() || null,
         password,
+        role,
       });
     },
     onSuccess: () => {
@@ -89,7 +93,7 @@ const UserFormDialog = ({ open, onClose, user, onSaved }: UserFormDialogProps) =
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{editing ? 'Edit account' : 'Add an administrator'}</DialogTitle>
+      <DialogTitle>{editing ? 'Edit account' : 'Add an account'}</DialogTitle>
 
       <DialogContent>
         {error && (
@@ -98,15 +102,45 @@ const UserFormDialog = ({ open, onClose, user, onSaved }: UserFormDialogProps) =
           </Alert>
         )}
 
+        {/*
+          The warning is only true of an administrator, so it follows the choice rather
+          than sitting above it. Telling someone that a reception account can see the
+          money would be worse than saying nothing.
+        */}
+        {!editing && role === 'Admin' && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            An administrator can do everything you can — see the money, refund payments and
+            remove members.
+          </Alert>
+        )}
+
         {!editing && (
           <Alert severity="info" sx={{ mb: 2 }}>
-            This account can do everything you can, including seeing the money and removing
-            members. There is no email in this system, so choose the password here and give
-            it to them in person — they can change it once they are in.
+            There is no email in this system, so choose the password here and give it to
+            them in person — they can change it once they are in.
           </Alert>
         )}
 
         <Grid container spacing={2} sx={{ mt: 0 }}>
+          <Grid item xs={12}>
+            <TextField
+              select
+              label="What they can do"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              fullWidth
+              SelectProps={{ native: true }}
+              InputLabelProps={{ shrink: true }}
+              helperText={
+                role === 'Admin'
+                  ? 'Everything, including the money and the audit trail.'
+                  : 'Runs the desk. Cannot refund a payment, see revenue history, read the audit trail, change prices or manage accounts.'
+              }
+            >
+              <option value="Admin">Administrator — the owner</option>
+              <option value="Staff">Reception — the desk</option>
+            </TextField>
+          </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               label="First name"

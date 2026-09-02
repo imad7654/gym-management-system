@@ -13,7 +13,7 @@ namespace GymManagement.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/exchange-rates")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = "AdminOrStaff")]
 public class ExchangeRatesController : ControllerBase
 {
     private readonly IExchangeRateService _exchangeRateService;
@@ -42,6 +42,9 @@ public class ExchangeRatesController : ControllerBase
     /// <summary>
     /// Set or correct today's rate.
     /// </summary>
+    // Reception reads the rate to take an LBP payment; moving it changes what every LBP
+    // payment that day is worth, so the owner sets it once each morning.
+    [Authorize(Policy = "AdminOnly")]
     [HttpPut("today")]
     [ProducesResponseType(typeof(ApiResponse<ExchangeRateDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]

@@ -29,9 +29,12 @@ public interface IUserService
 /// So every rule here is about not being locked out. The last administrator who can still
 /// sign in cannot be switched off, and nobody can switch off their own account.
 ///
-/// Accounts made here are administrators. A reception role with narrower access is separate
-/// work: every endpoint in this system is currently AdminOnly, so a "staff" account would
-/// sign in successfully and then be refused by every screen it tried to open.
+/// Accounts made here are administrators or reception. Reception runs the desk - find a
+/// member, take a payment, add somebody - and is refused everything that reveals what the
+/// gym has earned or could take money back out of the record.
+///
+/// Members are not managed here even though they are also User rows. Theirs is claimed by
+/// matching a phone number and is looked after from their own member page.
 /// </summary>
 public class UserService : IUserService
 {
@@ -55,6 +58,17 @@ public class UserService : IUserService
             .ThenBy(u => u.FirstName)
             .ToListAsync(cancellationToken);
 
+        // Members are User rows too, since they started being able to sign in, and without
+        // this they appeared on a screen whose own subtitle says it is not for them. Worse
+        // than untidy: it offered the owner a "switch off" next to a member, which is not
+        // what removing a member means and would not have taken them off the member list.
+        //
+        // A member's login is managed from their own member page, where the rest of what
+        // the gym knows about them already is.
+        users = users
+            .Where(u => u.UserRoles.Any(ur => ur.Role.Name is Roles.Admin or Roles.Staff))
+            .ToList();
+
         var adminIds = ActiveAdminIds(users);
 
         return users.Select(u => new UserListDto
@@ -69,6 +83,28 @@ public class UserService : IUserService
             IsYou = u.Id == currentUserId,
             IsLastAdmin = adminIds.Count == 1 && adminIds.Contains(u.Id)
         }).ToList();
+    }
+
+    /// <summary>
+    /// Refuses to touch a member's login from the staff accounts screen.
+    ///
+    /// Members became <see cref="User"/> rows when they started being able to sign in, so
+    /// their ids are valid here and every one of these methods would happily act on them.
+    /// A member's account belongs to their member page: switching one off from here would
+    /// look like removing a member without removing them from the member list, which is a
+    /// confusing half-state to leave the gym in.
+    /// </summary>
+    private static void RefuseIfMember(User user)
+    {
+        var isStaffAccount = user.UserRoles
+            .Any(ur => ur.Role.Name is Roles.Admin or Roles.Staff);
+
+        if (!isStaffAccount)
+        {
+            throw new BusinessException(
+                $"{user.FullName} is a member, not a member of staff. Their account is "
+                + "managed from their own member page.");
+        }
     }
 
     /// <summary>
@@ -97,9 +133,11 @@ public class UserService : IUserService
             throw new BusinessException($"An account already uses {email}.");
         }
 
-        var adminRole = await _unitOfWork.Roles.Query()
-            .FirstOrDefaultAsync(r => r.Name == Roles.Admin, cancellationToken)
-            ?? throw new BusinessException("The Admin role is missing from this database.");
+        var roleName = NormaliseRole(request.Role);
+
+        var role = await _unitOfWork.Roles.Query()
+            .FirstOrDefaultAsync(r => r.Name == roleName, cancellationToken)
+            ?? throw new BusinessException($"The {roleName} role is missing from this database.");
 
         var user = new User
         {
@@ -110,7 +148,7 @@ public class UserService : IUserService
             PasswordHash = _passwordHasher.HashPassword(request.Password)
         };
 
-        user.UserRoles.Add(new UserRole { Role = adminRole });
+        user.UserRoles.Add(new UserRole { Role = role });
 
         await _unitOfWork.Users.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -119,7 +157,9 @@ public class UserService : IUserService
         // say who it refers to is not worth keeping.
         await _audit.RecordAsync(
             "User", user.Id, AuditAction.Created,
-            $"Added administrator {user.FullName}",
+            roleName == Roles.Admin
+                ? $"Added administrator {user.FullName}"
+                : $"Added reception account for {user.FullName}",
             $"Signs in as {user.Email}. The password was set by hand and is not recorded here.",
             actingUserId, cancellationToken);
 
@@ -131,7 +171,7 @@ public class UserService : IUserService
             FullName = user.FullName,
             Email = user.Email,
             PhoneNumber = user.PhoneNumber,
-            Roles = new List<string> { Roles.Admin },
+            Roles = new List<string> { roleName },
             IsActive = true,
             CreatedAt = user.CreatedAt,
             IsYou = user.Id == actingUserId,
@@ -148,6 +188,8 @@ public class UserService : IUserService
 
         if (user == null) return null;
 
+        RefuseIfMember(user);
+
         var email = request.Email.Trim();
 
         var taken = await _unitOfWork.Users.QueryIncludingDeleted()
@@ -160,15 +202,36 @@ public class UserService : IUserService
 
         var emailChanged = !string.Equals(user.Email, email, StringComparison.Ordinal);
 
+        var roleName = NormaliseRole(request.Role);
+        var currentRole = user.UserRoles.FirstOrDefault()?.Role.Name;
+        var roleChanged = !string.Equals(currentRole, roleName, StringComparison.Ordinal);
+
+        if (roleChanged)
+        {
+            await ChangeRoleAsync(user, roleName, cancellationToken);
+        }
+
         user.FirstName = request.FirstName.Trim();
         user.LastName = request.LastName.Trim();
         user.Email = email;
         user.PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim();
 
+        var details = new List<string>();
+        if (emailChanged) details.Add($"Sign-in email is now {email}.");
+
+        if (roleChanged)
+        {
+            details.Add(roleName == Roles.Admin
+                ? "Promoted to administrator - they can now see revenue, reverse payments "
+                  + "and manage accounts."
+                : "Changed to reception - they can no longer reverse payments, see revenue "
+                  + "history, read the audit trail or change prices.");
+        }
+
         await _audit.RecordAsync(
             "User", user.Id, AuditAction.Updated,
             $"Edited {user.FullName}'s account",
-            emailChanged ? $"Sign-in email is now {email}." : null,
+            details.Count > 0 ? string.Join(" ", details) : null,
             actingUserId, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -203,6 +266,8 @@ public class UserService : IUserService
 
         var user = users.FirstOrDefault(u => u.Id == id);
         if (user == null) return false;
+
+        RefuseIfMember(user);
 
         var adminIds = ActiveAdminIds(users);
 
@@ -258,10 +323,15 @@ public class UserService : IUserService
         int id, ResetUserPasswordRequest request, int? actingUserId = null,
         CancellationToken cancellationToken = default)
     {
+        // Roles are included because the member guard below reads them; without the Include
+        // the collection comes back empty and every account looks like a member.
         var user = await _unitOfWork.Users.Query()
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (user == null) return false;
+
+        RefuseIfMember(user);
 
         user.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
 
@@ -279,6 +349,59 @@ public class UserService : IUserService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// The two roles this screen can hand out, and nothing else.
+    ///
+    /// Trainer and Client also exist in the database. Neither belongs here: a member gets
+    /// their account by matching their own phone number, and handing one out from the
+    /// accounts screen would put a login on a person with no member record behind it.
+    /// </summary>
+    private static string NormaliseRole(string? role) =>
+        string.Equals(role?.Trim(), Roles.Staff, StringComparison.OrdinalIgnoreCase)
+            ? Roles.Staff
+            : Roles.Admin;
+
+    /// <summary>
+    /// Moves an account between administrator and reception.
+    ///
+    /// Demoting the last administrator is refused for exactly the reason switching them off
+    /// is: reception cannot reach the accounts screen, so there would be nobody left able to
+    /// put it back. That is the same lockout by a different door, and it is easy to walk
+    /// into while tidying up who has what.
+    /// </summary>
+    private async Task ChangeRoleAsync(
+        User user, string roleName, CancellationToken cancellationToken)
+    {
+        if (roleName != Roles.Admin)
+        {
+            var everyone = await _unitOfWork.Users.Query()
+                .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+                .ToListAsync(cancellationToken);
+
+            var adminIds = ActiveAdminIds(everyone);
+
+            if (adminIds.Count == 1 && adminIds.Contains(user.Id))
+            {
+                throw new BusinessException(
+                    "This is the only administrator who can still sign in. Making them "
+                    + "reception would leave nobody able to change it back. Add another "
+                    + "administrator first.");
+            }
+        }
+
+        var role = await _unitOfWork.Roles.Query()
+            .FirstOrDefaultAsync(r => r.Name == roleName, cancellationToken)
+            ?? throw new BusinessException($"The {roleName} role is missing from this database.");
+
+        user.UserRoles.Clear();
+        user.UserRoles.Add(new UserRole { Role = role });
+
+        // A live session carries the old role in its access token until it expires, so a
+        // demoted administrator would keep administrator screens for up to fifteen minutes.
+        // Ending the sessions makes the change take effect at once.
+        await RevokeTokensAsync(user.Id, cancellationToken);
     }
 
     /// <summary>

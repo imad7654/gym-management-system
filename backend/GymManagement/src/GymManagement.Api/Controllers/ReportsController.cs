@@ -8,20 +8,32 @@ using Microsoft.AspNetCore.Mvc;
 namespace GymManagement.Api.Controllers;
 
 /// <summary>
-/// The owner's money reports - the numbers they check the business against.
+/// The money reports.
+///
+/// Two of these are desk work and one is not. Reception chases the people who owe money
+/// and counts its own drawer at the end of a shift; reading back over past days, or over
+/// who did what, is the owner auditing the business rather than running it.
 /// </summary>
 [ApiController]
 [Route("api/v1/reports")]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = "AdminOrStaff")]
 public class ReportsController : ControllerBase
 {
     private readonly IReportService _reportService;
     private readonly IAuditService _auditService;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IMembershipClock _clock;
 
-    public ReportsController(IReportService reportService, IAuditService auditService)
+    public ReportsController(
+        IReportService reportService,
+        IAuditService auditService,
+        ICurrentUserService currentUserService,
+        IMembershipClock clock)
     {
         _reportService = reportService;
         _auditService = auditService;
+        _currentUserService = currentUserService;
+        _clock = clock;
     }
 
     /// <summary>
@@ -48,6 +60,16 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetDailyTakings(
         [FromQuery] DateOnly? date, CancellationToken cancellationToken)
     {
+        // Reception counts today's drawer against today's figure. Reading back over past
+        // days is revenue history by another name - the same thing the dashboard's all-time
+        // total is withheld for - so the date is refused rather than quietly ignored, which
+        // would show them today's money under yesterday's heading.
+        if (date.HasValue && !_currentUserService.IsAdmin && date.Value != _clock.Today)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.FailResponse(
+                "Reception can only see today's takings. Ask the owner for another day."));
+        }
+
         var report = await _reportService.GetDailyTakingsAsync(date, cancellationToken);
         return Ok(ApiResponse<DailyTakingsDto>.SuccessResponse(report));
     }
@@ -55,6 +77,9 @@ public class ReportsController : ControllerBase
     /// <summary>
     /// The audit trail: who did what, newest first.
     /// </summary>
+    // The trail exists to check the people who use the system, reception included. Letting
+    // it read its own entries would defeat the point of keeping one.
+    [Authorize(Policy = "AdminOnly")]
     [HttpGet("audit")]
     [ProducesResponseType(typeof(ApiResponse<PaginatedResult<AuditEntryDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAuditTrail(

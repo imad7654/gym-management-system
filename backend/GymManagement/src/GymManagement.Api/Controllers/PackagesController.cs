@@ -21,7 +21,7 @@ public class PackagesController : ControllerBase
     /// Get all packages (Admin only - includes inactive)
     /// </summary>
     [HttpGet]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "AdminOrStaff")]
     [ProducesResponseType(typeof(ApiResponse<List<PackageListDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPackages([FromQuery] bool includeInactive = false)
     {
@@ -45,7 +45,7 @@ public class PackagesController : ControllerBase
     /// Get package by ID (Admin only)
     /// </summary>
     [HttpGet("{id}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "AdminOrStaff")]
     [ProducesResponseType(typeof(ApiResponse<PackageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPackage(int id)

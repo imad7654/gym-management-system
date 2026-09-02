@@ -1,5 +1,6 @@
 using FluentValidation;
 using GymManagement.Application.DTOs.User;
+using GymManagement.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 
 namespace GymManagement.Application.Validators;
@@ -42,7 +43,20 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
             .NotEmpty().WithMessage("A password is required")
             .MinimumLength(minimumLength)
                 .WithMessage($"The password must be at least {minimumLength} characters");
+
+        RuleFor(x => x.Role)
+            .Must(BeAKnownRole)
+                .WithMessage("Choose either administrator or reception");
     }
+
+    /// <summary>
+    /// Only the two roles the accounts screen hands out. Trainer and Client exist in the
+    /// database but are not this screen's to give - a member account is claimed by phone
+    /// number, not granted here.
+    /// </summary>
+    internal static bool BeAKnownRole(string? role) =>
+        string.Equals(role, Roles.Admin, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(role, Roles.Staff, StringComparison.OrdinalIgnoreCase);
 }
 
 public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
@@ -64,6 +78,10 @@ public class UpdateUserRequestValidator : AbstractValidator<UpdateUserRequest>
 
         RuleFor(x => x.PhoneNumber)
             .MaximumLength(30);
+
+        RuleFor(x => x.Role)
+            .Must(CreateUserRequestValidator.BeAKnownRole)
+                .WithMessage("Choose either administrator or reception");
     }
 }
 

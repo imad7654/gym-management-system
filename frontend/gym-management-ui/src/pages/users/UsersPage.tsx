@@ -70,7 +70,12 @@ const UsersPage = () => {
     setFormOpen(true);
   };
 
-  const activeAdmins = (users ?? []).filter((u) => u.isActive).length;
+  // Administrators, not accounts. A reception account cannot open this screen, so it
+  // cannot rescue anybody from a forgotten administrator password - counting it here made
+  // the warning below disappear the moment reception existed, which is exactly backwards.
+  const activeAdmins = (users ?? []).filter(
+    (u) => u.isActive && u.roles.includes('Admin')
+  ).length;
 
   const columns: ResponsiveColumn<UserAccount>[] = [
     {
@@ -88,6 +93,18 @@ const UsersPage = () => {
           <Chip label="You" size="small" color="primary" />
         ) : (
           <Chip label="Can sign in" size="small" color="success" variant="outlined" />
+        ),
+    },
+    {
+      // The single most useful column on this screen now that there are two kinds of
+      // account: it answers "can that person see the money?" at a glance.
+      header: 'Can do',
+      badge: true,
+      render: (u) =>
+        u.roles.includes('Admin') ? (
+          <Chip label="Everything" size="small" color="warning" variant="outlined" />
+        ) : (
+          <Chip label="The desk" size="small" variant="outlined" />
         ),
     },
     {
@@ -176,23 +193,26 @@ const UsersPage = () => {
       >
         <Typography variant="h4">Who can sign in</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
-          Add administrator
+          Add account
         </Button>
       </Box>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        These are the people who run the gym, not the members.
+        The people who run the gym, not the members. An administrator can do everything you
+        can; reception runs the desk but cannot refund a payment, see revenue history, read
+        the audit trail or change prices.
       </Typography>
 
       {/*
-        The warning that matters. One account and a forgotten password means nobody can get
-        in - there is no email in this system, so there is no reset link to fall back on.
+        The warning that matters. Reception cannot open this screen, so one administrator
+        means one person who can fix anything here. The email reset softens it but does not
+        remove it: that only works once the gym has supplied a mail account.
       */}
       {!isLoading && activeAdmins === 1 && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          There is only one account that can sign in. If that password is forgotten, nobody
-          can get into the system — there is no reset email to fall back on. Add a second
-          administrator you trust.
+          There is only one administrator. Reception accounts cannot open this screen, so if
+          that password is forgotten the only way back in is the emailed reset link — which
+          needs the gym&apos;s email set up. Add a second administrator you trust.
         </Alert>
       )}
 
