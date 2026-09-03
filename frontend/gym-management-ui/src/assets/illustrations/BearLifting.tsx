@@ -1,4 +1,5 @@
 import { Box, SxProps, Theme } from '@mui/material';
+import { GYM } from '@/config/gym';
 
 interface BearLiftingProps {
   sx?: SxProps<Theme>;
@@ -27,11 +28,11 @@ export const BearLifting = ({ sx }: BearLiftingProps) => {
       <!-- Barbell (heavy, bending) -->
       <path d="M 200 180 Q 400 220 600 180" stroke="#333" stroke-width="15" fill="none"/>
       <!-- Weight plates (left) -->
-      <circle cx="180" cy="175" r="40" fill="#1b5e20" stroke="#2e7d32" stroke-width="3"/>
-      <circle cx="180" cy="175" r="30" fill="#2e7d32"/>
+      <circle cx="180" cy="175" r="40" fill="${GYM.colour.dark}" stroke="${GYM.colour.main}" stroke-width="3"/>
+      <circle cx="180" cy="175" r="30" fill="${GYM.colour.main}"/>
       <!-- Weight plates (right) -->
-      <circle cx="620" cy="175" r="40" fill="#1b5e20" stroke="#2e7d32" stroke-width="3"/>
-      <circle cx="620" cy="175" r="30" fill="#2e7d32"/>
+      <circle cx="620" cy="175" r="40" fill="${GYM.colour.dark}" stroke="${GYM.colour.main}" stroke-width="3"/>
+      <circle cx="620" cy="175" r="30" fill="${GYM.colour.main}"/>
       <!-- Sweat drops -->
       <ellipse cx="340" cy="260" rx="5" ry="8" fill="#4dd0e1" opacity="0.7"/>
       <ellipse cx="460" cy="260" rx="5" ry="8" fill="#4dd0e1" opacity="0.7"/>

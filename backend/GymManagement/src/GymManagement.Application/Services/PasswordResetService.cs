@@ -184,16 +184,20 @@ public class PasswordResetService : IPasswordResetService
         var link = $"{baseUrl}/reset-password?token={Uri.EscapeDataString(rawToken)}";
         var minutes = (int)TokenLifetime.TotalMinutes;
 
+        // Named rather than hardcoded, so a clone for another gym does not email its members
+        // about their "Fit Bear Gym account".
+        var gymName = _configuration["Gym:Name"] ?? "the gym";
+
         var text =
             $"Hello {user.FirstName},\n\n"
-            + "Someone asked to reset the password for your Fit Bear Gym account.\n\n"
+            + $"Someone asked to reset the password for your {gymName} account.\n\n"
             + $"Open this link to choose a new one:\n{link}\n\n"
             + $"The link works once and stops working after {minutes} minutes.\n\n"
             + "If this was not you, you can ignore this email - nothing has changed.\n";
 
         var html =
             $"<p>Hello {user.FirstName},</p>"
-            + "<p>Someone asked to reset the password for your Fit Bear Gym account.</p>"
+            + $"<p>Someone asked to reset the password for your {gymName} account.</p>"
             + $"<p><a href=\"{link}\">Choose a new password</a></p>"
             + $"<p>The link works once and stops working after {minutes} minutes.</p>"
             + "<p>If this was not you, you can ignore this email - nothing has changed.</p>";
@@ -202,7 +206,7 @@ public class PasswordResetService : IPasswordResetService
         {
             await _email.SendAsync(
                 user.Email, user.FullName,
-                "Reset your Fit Bear Gym password",
+                $"Reset your {gymName} password",
                 html, text, cancellationToken);
         }
         catch (Exception ex)

@@ -32,7 +32,7 @@ public static class DataSeeder
             await context.SaveChangesAsync(); // Save roles first
 
             await SeedAdminUserAsync(context, passwordHasher, configuration, environment, logger);
-            await SeedGymInfoAsync(context, seedDemoData, logger);
+            await SeedGymInfoAsync(context, seedDemoData, configuration, logger);
 
             if (seedDemoData)
             {
@@ -216,36 +216,46 @@ public static class DataSeeder
     /// Outside demo mode it is created empty for the owner to fill in rather than pre-filled
     /// with another gym name and address.
     /// </summary>
-    private static async Task SeedGymInfoAsync(ApplicationDbContext context, bool seedDemoData, ILogger logger)
+    private static async Task SeedGymInfoAsync(
+        ApplicationDbContext context, bool seedDemoData, IConfiguration configuration, ILogger logger)
     {
         if (await context.GymInfos.AnyAsync()) return;
 
+        // The name comes from Gym:Name, which is the one place a clone sets who it is for.
+        var gymName = configuration["Gym:Name"] ?? "My Gym";
+
         if (!seedDemoData)
         {
-            await context.GymInfos.AddAsync(new GymInfo { GymName = "My Gym" });
+            await context.GymInfos.AddAsync(new GymInfo { GymName = gymName });
             logger.LogInformation("Created empty gym information row");
             return;
         }
 
-        // This is what the public homepage shows until the owner edits it under
-        // Settings, so it is The Fit Bear Gym's own copy rather than generic filler.
+        // What the public homepage shows until the owner edits it under Settings, so it has
+        // to read as finished copy rather than as filler - a demo whose homepage says
+        // "Add your tagline here" sells nothing.
+        //
+        // It is written around whatever Gym:Name is set to, and says nothing that is only
+        // true of one gym. The previous version was this gym's own marketing - "train like
+        // a bear", "join our pack" - which read as somebody else's branding the moment the
+        // repository was cloned for a different customer, and could only be found by
+        // grepping the source.
+        //
         // OperatingHours is deliberately plain text: nothing parses it, and the Settings
         // screen edits it as free text.
         var gymInfo = new GymInfo
         {
-            GymName = "🐻 The Fit Bear Gym",
-            Description = "Where strength meets nature. Serious equipment, real coaching, and a room full of people who show up.",
+            GymName = gymName,
+            Description = "Serious equipment, real coaching, and a room full of people who show up.",
             Address = "Add your street address under Settings",
             PhoneNumber = "+961 00 000 000",
-            Email = "hello@thefitbeargym.com",
-            InstagramUrl = "https://instagram.com/thefitbeargym",
-            HeroTitle = "Where Strength Meets Nature",
-            HeroSubtitle = "Train like a bear, dominate like a champion. Join our pack and unleash your primal strength!",
-            AboutTitle = "📍 Find Us & Join The Pack",
-            AboutContent = "The Fit Bear Gym - where bears train champions. Come in for a look around, meet the coaches, and we will find the membership that fits how you actually train.",
+            HeroTitle = "Training that fits how you actually train",
+            HeroSubtitle = "Proper equipment, coaches who know your name, and hours that suit a working week.",
+            AboutTitle = "📍 Find us",
+            AboutContent = $"Come in for a look around, meet the coaches, and we will find the membership that fits. {gymName} is open seven days a week.",
             OperatingHours = "Mon-Fri: 6:00 AM - 10:00 PM\nSaturday: 8:00 AM - 8:00 PM\nSunday: 9:00 AM - 6:00 PM",
-            MetaTitle = "The Fit Bear Gym - Where Strength Meets Nature",
-            MetaDescription = "Serious equipment, real coaching, and a community that shows up. Join The Fit Bear Gym and start training today."
+            MetaTitle = gymName,
+            MetaDescription = $"Serious equipment, real coaching, and a community that shows up. Join {gymName} and start training today."
         };
 
         await context.GymInfos.AddAsync(gymInfo);

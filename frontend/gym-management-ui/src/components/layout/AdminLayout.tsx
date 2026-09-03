@@ -37,6 +37,8 @@ import {
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@store/authStore';
 import { MemberSearch } from './MemberSearch';
+import { useGymName } from '@lib/useGymName';
+import { GYM, gymTint } from '@/config/gym';
 
 const drawerWidth = 240;
 
@@ -46,6 +48,7 @@ export const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const gym = useGymName();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -118,9 +121,9 @@ export const AdminLayout = () => {
 
   const drawer = (
     <Box>
-      <Toolbar sx={{ bgcolor: '#1b5e20' }}>
+      <Toolbar sx={{ bgcolor: GYM.colour.dark }}>
         <Typography variant="h6" noWrap sx={{ color: 'white', fontWeight: 'bold' }}>
-          🐻 Fit Bear Gym
+          {gym.label}
         </Typography>
       </Toolbar>
       {menuGroups.map((group) => (
@@ -154,16 +157,16 @@ export const AdminLayout = () => {
                 }}
                 sx={{
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(46, 125, 50, 0.12)',
-                    borderRight: '4px solid #2e7d32',
+                    backgroundColor: gymTint(0.12),
+                    borderRight: `4px solid ${GYM.colour.main}`,
                     '&:hover': {
-                      backgroundColor: 'rgba(46, 125, 50, 0.2)',
+                      backgroundColor: gymTint(0.2),
                     },
                   },
                 }}
               >
                 <ListItemIcon
-                  sx={{ color: location.pathname === item.path ? '#2e7d32' : 'inherit' }}
+                  sx={{ color: location.pathname === item.path ? GYM.colour.main : 'inherit' }}
                 >
                   {item.icon}
                 </ListItemIcon>
@@ -202,7 +205,7 @@ export const AdminLayout = () => {
             noWrap
             sx={{ mr: 2, display: { xs: 'none', md: 'block' } }}
           >
-            🐻 The Fit Bear Gym
+            {gym.label}
           </Typography>
 
           <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: { xs: 'flex-start', md: 'center' } }}>

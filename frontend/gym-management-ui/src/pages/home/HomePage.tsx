@@ -7,19 +7,27 @@ import { BearLifting } from '@assets/illustrations/BearLifting';
 import { MOTIVATIONAL_QUOTES } from '@constants/motivationalQuotes';
 import { MotivationalQuoteCard } from '@components/home/MotivationalQuoteCard';
 import { PackageCard } from '@components/home/PackageCard';
+import { GYM, gymLabel } from '@/config/gym';
 
 /**
  * What the homepage says when the owner has not filled in Gym settings yet. Every one of
  * these is overridden by the saved GymInfo row, so the page never looks unfinished and
  * the fallbacks stay out of the way once real copy exists.
+ *
+ * The name and tagline come from `src/config/gym.ts` rather than being written here. They
+ * used to be this gym's own copy — "train like a bear", "join our pack" — which meant a
+ * clone for a different gym showed somebody else's marketing to its first visitor, and the
+ * only way to find it was to grep the source. The wording below is deliberately plain, so
+ * an unconfigured install reads as neutral rather than as the wrong gym.
  */
 const FALLBACK = {
-  gymName: '🐻 THE FIT BEAR GYM',
-  heroTitle: 'Where Strength Meets Nature',
+  gymName: gymLabel().toUpperCase(),
+  heroTitle: GYM.tagline,
   heroSubtitle:
-    'Train like a bear, dominate like a champion. Join our pack and unleash your primal strength!',
-  aboutTitle: '📍 Find Us & Join The Pack',
-  aboutContent: 'The Fit Bear Gym - Where bears train champions',
+    'Serious equipment, real coaching, and people who show up. Come in for a look around, '
+    + 'and we will find the membership that fits how you actually train.',
+  aboutTitle: '📍 Find us',
+  aboutContent: `${GYM.name} — ${GYM.tagline}.`,
 };
 
 /**
@@ -91,7 +99,9 @@ const HomePage = () => {
       {/* Hero Section with Bear Background */}
       <Box
         sx={{
-          background: `linear-gradient(135deg, rgba(46, 125, 50, 0.95) 0%, rgba(27, 94, 32, 0.95) 100%)`,
+          // The brand colours, not a second copy of them written as rgba — which is how
+          // this hero stayed green through a rebrand until somebody actually looked at it.
+          background: `linear-gradient(135deg, ${GYM.colour.main} 0%, ${GYM.colour.dark} 100%)`,
           color: 'white',
           py: 12,
           textAlign: 'center',
@@ -102,7 +112,12 @@ const HomePage = () => {
           alignItems: 'center',
         }}
       >
-        {/* Bear SVG Background */}
+        {/*
+          The mascot is a bear drawn in code — right for this gym and wrong for most
+          others, so a clone turns it off in src/config/gym.ts rather than shipping
+          somebody else's animal behind its hero text.
+        */}
+        {GYM.showMascot && (
         <BearLifting
           sx={{
             position: 'absolute',
@@ -115,6 +130,7 @@ const HomePage = () => {
             zIndex: 0,
           }}
         />
+        )}
 
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Typography
@@ -151,7 +167,7 @@ const HomePage = () => {
               onClick={() => navigate('/login')}
               sx={{
                 bgcolor: 'white',
-                color: '#2e7d32',
+                color: GYM.colour.main,
                 px: 5,
                 py: 2,
                 fontSize: '1.2rem',
@@ -165,12 +181,17 @@ const HomePage = () => {
                 transition: 'all 0.3s'
               }}
             >
-              🔑 Admin Login
+              🔑 Sign in
             </Button>
+            {/*
+              This said "Join The Pack (Soon)" and was disabled long after member sign-up
+              shipped — so the one thing on the homepage a member could actually do was the
+              one thing it told them they could not.
+            */}
             <Button
               variant="outlined"
               size="large"
-              disabled
+              onClick={() => navigate('/register')}
               sx={{
                 borderColor: 'white',
                 borderWidth: 2,
@@ -179,9 +200,14 @@ const HomePage = () => {
                 py: 2,
                 fontSize: '1.2rem',
                 fontWeight: 'bold',
+                '&:hover': {
+                  borderColor: 'white',
+                  borderWidth: 2,
+                  bgcolor: 'rgba(255,255,255,0.12)',
+                },
               }}
             >
-              💪 Join The Pack (Soon)
+              💪 Set up my account
             </Button>
           </Box>
         </Container>
@@ -196,7 +222,7 @@ const HomePage = () => {
             sx={{
               mb: 6,
               fontWeight: 'bold',
-              color: '#1b5e20',
+              color: GYM.colour.dark,
               textTransform: 'uppercase',
               letterSpacing: '0.05em'
             }}
@@ -221,7 +247,7 @@ const HomePage = () => {
             textAlign="center"
             gutterBottom
             sx={{
-              color: '#1b5e20',
+              color: GYM.colour.dark,
               fontWeight: 'bold',
               mb: 2,
               textTransform: 'uppercase'
@@ -250,7 +276,7 @@ const HomePage = () => {
       {/* Contact/Footer Section */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #1b5e20 0%, #0d4416 100%)',
+          background: `linear-gradient(135deg, ${GYM.colour.dark} 0%, ${GYM.colour.deepest} 100%)`,
           color: 'white',
           py: 6,
           textAlign: 'center'

@@ -45,7 +45,11 @@ public class SmtpEmailSender : IEmailSender
         _username = configuration["Email:Username"];
         _password = configuration["Email:Password"];
         _fromAddress = configuration["Email:FromAddress"] ?? _username ?? string.Empty;
-        _fromName = configuration["Email:FromName"] ?? "The Fit Bear Gym";
+        // Falls back to the gym's own name rather than a hardcoded one, so a clone that sets
+        // only Gym:Name still sends mail signed as itself.
+        _fromName = configuration["Email:FromName"]
+            ?? configuration["Gym:Name"]
+            ?? "The gym";
 
         // 587 with STARTTLS is what Gmail wants. 465 is implicit SSL from the start.
         _useStartTls = _port != 465;

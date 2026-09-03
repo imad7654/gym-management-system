@@ -1,19 +1,18 @@
 import { createTheme } from '@mui/material/styles';
+import { GYM } from '@/config/gym';
 
 export const theme = createTheme({
   palette: {
-    primary: {
-      main: '#2e7d32', // Green theme for The Fit Bear Gym
-      light: '#4caf50',
-      dark: '#1b5e20',
-    },
-    secondary: {
-      main: '#66bb6a', // Lighter green for secondary actions
-      light: '#81c784',
-      dark: '#388e3c',
-    },
+    // Every brand colour comes from src/config/gym.ts, so rebranding a clone is one file
+    // rather than a hunt through the source for hex values.
+    primary: GYM.colour,
+    secondary: GYM.accent,
+
+    // Success deliberately matches the brand: in this app the brand colour already means
+    // "this went well" — a paid membership, a completed payment — and a second green
+    // beside it reads as a mistake.
     success: {
-      main: '#2e7d32',
+      main: GYM.colour.main,
     },
     error: {
       main: '#d32f2f',

@@ -16,6 +16,7 @@ React 18 front end, over MySQL.
 - [Getting it running](#-getting-it-running)
 - [Signing in](#-signing-in)
 - [Configuration](#-configuration)
+- [Cloning it for another gym](#-cloning-it-for-another-gym)
 - [Project structure](#-project-structure)
 - [API](#-api)
 - [Architecture](#-architecture)
@@ -259,6 +260,34 @@ only be discovered when somebody was already locked out.
 | `Seed:DemoData` | `true` in development | The 30-member demo gym. Off everywhere else, and it refuses to run against a database that already has members |
 | `Validation:MinPasswordLength` | 12 | Applies to every way a password is set |
 | `Cors:AllowedOrigins` | `localhost:5173` | Where the front end is served from |
+
+## 🎨 Cloning it for another gym
+
+Resale is by cloning this repository per gym and editing it by hand — deliberately, rather
+than building a theming engine, which under roughly five customers never pays for itself.
+
+**Two files carry the gym's identity.** Change these and the whole system follows:
+
+| File | Holds |
+|---|---|
+| `frontend/gym-management-ui/src/config/gym.ts` | Name, short name, emoji mark, tagline, every brand colour, and whether to draw the mascot |
+| `backend/.../GymManagement.Api/appsettings.json` → `Gym:Name` | The name used in the emails the system sends, and the gym's initial name in Settings |
+
+Two rather than one because a TypeScript constant cannot be read from C#.
+
+Everything else the gym shows — address, phone, opening hours, the homepage copy, social
+links — is **content, not identity**, and the owner edits it under **Settings** without a
+developer. Where a saved value exists it always beats the config; the config is what the app
+shows before the first request returns, and on a fresh install whose owner has not opened
+Settings yet.
+
+The mascot is a bear drawn in code. Set `showMascot: false` for a gym that is not this one,
+rather than shipping somebody else's animal.
+
+> Colours belong in that config file and nowhere else. If you find yourself typing a hex
+> value into a component, it will survive the next rebrand and nothing will find it — that
+> is exactly how this app's hero banner stayed green through a rebrand until somebody
+> looked at it.
 
 ## 📁 Project structure
 

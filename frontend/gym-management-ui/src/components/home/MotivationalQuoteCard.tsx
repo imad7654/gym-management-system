@@ -1,4 +1,5 @@
 import { Paper, Typography, Box } from '@mui/material';
+import { GYM, gymTint } from '@/config/gym';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import SportsGymnasticsIcon from '@mui/icons-material/SportsGymnastics';
@@ -31,7 +32,7 @@ export const MotivationalQuoteCard = ({ quote }: MotivationalQuoteCardProps) => 
         p: 4,
         textAlign: 'center',
         bgcolor: '#f1f8f4',
-        border: '4px solid #2e7d32',
+        border: `4px solid ${GYM.colour.main}`,
         borderRadius: 3,
         height: '100%',
         display: 'flex',
@@ -43,8 +44,8 @@ export const MotivationalQuoteCard = ({ quote }: MotivationalQuoteCardProps) => 
         overflow: 'hidden',
         '&:hover': {
           transform: 'translateY(-10px) scale(1.03)',
-          boxShadow: '0 12px 24px rgba(46, 125, 50, 0.25)',
-          borderColor: '#1b5e20',
+          boxShadow: `0 12px 24px ${gymTint(0.25)}`,
+          borderColor: GYM.colour.dark,
           bgcolor: 'white',
         },
         '&::before': {
@@ -54,18 +55,18 @@ export const MotivationalQuoteCard = ({ quote }: MotivationalQuoteCardProps) => 
           left: 0,
           right: 0,
           height: '6px',
-          background: 'linear-gradient(90deg, #2e7d32, #1b5e20)',
+          background: `linear-gradient(90deg, ${GYM.colour.main}, ${GYM.colour.dark})`,
         }
       }}
     >
-      <Box sx={{ color: '#2e7d32', mb: 2, animation: 'pulse 2s infinite' }}>
+      <Box sx={{ color: GYM.colour.main, mb: 2, animation: 'pulse 2s infinite' }}>
         {getIcon(quote.iconType)}
       </Box>
       <Typography
         variant="h4"
         sx={{
           fontWeight: 900,
-          color: '#1b5e20',
+          color: GYM.colour.dark,
           mb: 2,
           textTransform: 'uppercase',
           lineHeight: 1.2,

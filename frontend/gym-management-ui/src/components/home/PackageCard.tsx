@@ -1,4 +1,5 @@
 import { Card, CardContent, Typography, Box } from '@mui/material';
+import { GYM, gymTint } from '@/config/gym';
 import { Package } from '@app-types/index';
 
 interface PackageCardProps {
@@ -19,16 +20,16 @@ export const PackageCard = ({ package: pkg, index }: PackageCardProps) => {
         overflow: 'hidden',
         '&:hover': {
           transform: 'translateY(-12px) scale(1.02)',
-          boxShadow: '0 16px 32px rgba(46, 125, 50, 0.2)',
-          borderColor: '#2e7d32',
+          boxShadow: `0 16px 32px ${gymTint(0.2)}`,
+          borderColor: GYM.colour.main,
         },
       }}
     >
       <Box
         sx={{
           background: index % 2 === 0
-            ? 'linear-gradient(135deg, #2e7d32, #1b5e20)'
-            : 'linear-gradient(135deg, #1b5e20, #0d4416)',
+            ? `linear-gradient(135deg, ${GYM.colour.main}, ${GYM.colour.dark})`
+            : `linear-gradient(135deg, ${GYM.colour.dark}, ${GYM.colour.deepest})`,
           color: 'white',
           py: 3,
           textAlign: 'center',
@@ -43,7 +44,7 @@ export const PackageCard = ({ package: pkg, index }: PackageCardProps) => {
         <Typography
           variant="h2"
           sx={{
-            color: '#2e7d32',
+            color: GYM.colour.main,
             fontWeight: 900,
             mb: 1
           }}

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { GYM } from '@/config/gym';
 import {
   Alert,
   Box,
@@ -159,7 +160,7 @@ const RevenuePage = () => {
                     yAxisId="money"
                     dataKey="totalUsd"
                     name="Taken"
-                    fill="#2e7d32"
+                    fill={GYM.colour.main}
                     radius={[3, 3, 0, 0]}
                     cursor="pointer"
                   />
