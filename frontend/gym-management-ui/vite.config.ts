@@ -2,24 +2,29 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// import.meta.dirname rather than __dirname: Vite's native config loader does not provide
+// __dirname, and that loader becomes the default in a future major. Fixing it now costs
+// nothing and avoids the config silently failing to resolve these aliases later.
+const here = import.meta.dirname
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@assets': path.resolve(__dirname, './src/assets'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@constants': path.resolve(__dirname, './src/constants'),
-      '@features': path.resolve(__dirname, './src/features'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@lib': path.resolve(__dirname, './src/lib'),
-      '@pages': path.resolve(__dirname, './src/pages'),
-      '@routes': path.resolve(__dirname, './src/routes'),
-      '@services': path.resolve(__dirname, './src/services'),
-      '@store': path.resolve(__dirname, './src/store'),
-      '@app-types': path.resolve(__dirname, './src/types'),
-      '@utils': path.resolve(__dirname, './src/utils'),
+      '@': path.resolve(here, './src'),
+      '@assets': path.resolve(here, './src/assets'),
+      '@components': path.resolve(here, './src/components'),
+      '@constants': path.resolve(here, './src/constants'),
+      '@features': path.resolve(here, './src/features'),
+      '@hooks': path.resolve(here, './src/hooks'),
+      '@lib': path.resolve(here, './src/lib'),
+      '@pages': path.resolve(here, './src/pages'),
+      '@routes': path.resolve(here, './src/routes'),
+      '@services': path.resolve(here, './src/services'),
+      '@store': path.resolve(here, './src/store'),
+      '@app-types': path.resolve(here, './src/types'),
+      '@utils': path.resolve(here, './src/utils'),
     },
   },
   server: {

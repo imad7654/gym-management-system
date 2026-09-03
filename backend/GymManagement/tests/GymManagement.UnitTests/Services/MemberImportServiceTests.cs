@@ -145,11 +145,11 @@ public class MemberImportServiceTests : IDisposable
     [InlineData("30.09.2026")]
     [InlineData("30 Sep 2026")]
     [InlineData("30 September 2026")]
-    public void ParsedEndDates_AcceptTheWaysADateGetsWritten(string written)
+    public async Task ParsedEndDates_AcceptTheWaysADateGetsWritten(string written)
     {
-        var preview = PreviewCsv(
+        var preview = await PreviewCsv(
             "Name,Phone,Package,End Date",
-            $"Sara Khoury,03123456,Monthly,{written}").Result;
+            $"Sara Khoury,03123456,Monthly,{written}");
 
         preview.Rows[0].MembershipEndDate.Should().Be(new DateTime(2026, 9, 30));
     }
@@ -266,11 +266,11 @@ public class MemberImportServiceTests : IDisposable
     [InlineData("2026-12-31", nameof(MembershipStatus.Active))]
     [InlineData("2026-09-02", nameof(MembershipStatus.Expiring))]
     [InlineData("2026-08-01", nameof(MembershipStatus.Expired))]
-    public void Preview_StatusIsWorkedOutFromTheEndDate(string endDate, string expected)
+    public async Task Preview_StatusIsWorkedOutFromTheEndDate(string endDate, string expected)
     {
-        var preview = PreviewCsv(
+        var preview = await PreviewCsv(
             "Name,Phone,Package,End Date",
-            $"Sara Khoury,03123456,3 Months,{endDate}").Result;
+            $"Sara Khoury,03123456,3 Months,{endDate}");
 
         preview.Rows[0].MembershipStatus.Should().Be(expected);
     }

@@ -74,7 +74,7 @@ the person the gym wants back.
 Infrastructure / API), Entity Framework Core 8, MySQL 8, JWT with refresh tokens, BCrypt,
 FluentValidation, Serilog, MailKit, Swagger.
 
-**Frontend** — React 18, TypeScript, Vite 5, Material-UI v5, TanStack Query for server
+**Frontend** — React 18, TypeScript, Vite 7, Material-UI v5, TanStack Query for server
 state, Zustand for auth, React Router v6, Axios, Recharts.
 
 ## 🚀 Getting it running

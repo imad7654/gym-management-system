@@ -44,7 +44,9 @@ public class CreateClientRequestValidatorTests
     [InlineData("")]
     [InlineData(null)]
     [InlineData(" ")]
-    public void Validate_EmptyFirstName_ShouldHaveValidationError(string firstName)
+    // string? because one case deliberately passes null - the validator has to reject it,
+    // and a non-nullable parameter makes the analyzer object to the test that proves it.
+    public void Validate_EmptyFirstName_ShouldHaveValidationError(string? firstName)
     {
         // Arrange
         var request = new CreateClientRequest

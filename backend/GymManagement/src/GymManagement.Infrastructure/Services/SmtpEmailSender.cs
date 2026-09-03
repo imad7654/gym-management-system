@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using GymManagement.Application.Interfaces;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -55,6 +56,15 @@ public class SmtpEmailSender : IEmailSender
         _useStartTls = _port != 465;
     }
 
+    /// <summary>
+    /// Whether there is a mail server to send through.
+    ///
+    /// The annotation tells the compiler what the guard in <see cref="SendAsync"/> already
+    /// guarantees: past that check these four are not null. Without it every use below is a
+    /// nullable warning, and the tempting fix is to silence each one with `!` — which would
+    /// keep working after somebody removed the guard.
+    /// </summary>
+    [MemberNotNullWhen(true, nameof(_host), nameof(_username), nameof(_password), nameof(_fromAddress))]
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_host)
         && !string.IsNullOrWhiteSpace(_username)
